@@ -19,16 +19,11 @@ function buildMockStreamChunks(lastUserContent: string) {
     | { type: "text-end"; id: string }
     | {
         type: "finish";
-        finishReason: { unified: "stop"; raw: undefined };
-        logprobs: undefined;
+        finishReason: "stop";
         usage: {
-          inputTokens: {
-            total: number;
-            noCache: number;
-            cacheRead?: undefined;
-            cacheWrite?: undefined;
-          };
-          outputTokens: { total: number; text: number; reasoning?: undefined };
+          promptTokens: number;
+          completionTokens: number;
+          totalTokens: number;
         };
       }
   > = [{ type: "text-start", id }];
@@ -40,11 +35,11 @@ function buildMockStreamChunks(lastUserContent: string) {
   chunks.push({ type: "text-end", id });
   chunks.push({
     type: "finish",
-    finishReason: { unified: "stop", raw: undefined },
-    logprobs: undefined,
+    finishReason: "stop",
     usage: {
-      inputTokens: { total: 0, noCache: 0 },
-      outputTokens: { total: reply.length, text: reply.length },
+      promptTokens: 0,
+      completionTokens: reply.length,
+      totalTokens: reply.length,
     },
   });
 
