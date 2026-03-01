@@ -21,8 +21,15 @@ function buildMockStreamChunks(lastUserContent: string) {
         type: "finish";
         finishReason: "stop";
         usage: {
-          inputTokens: number;
-          outputTokens: number;
+          inputTokens: {
+            total: number;
+            noCache: number;
+            cacheRead: number;
+            cacheWrite: number;
+          };
+          outputTokens: {
+            total: number;
+          };
           totalTokens: number;
         };
       }
@@ -37,8 +44,8 @@ function buildMockStreamChunks(lastUserContent: string) {
     type: "finish",
     finishReason: "stop",
     usage: {
-      inputTokens: 0,
-      outputTokens: reply.length,
+      inputTokens: { total: 0, noCache: 0, cacheRead: 0, cacheWrite: 0 },
+      outputTokens: { total: reply.length },
       totalTokens: reply.length,
     },
   });
