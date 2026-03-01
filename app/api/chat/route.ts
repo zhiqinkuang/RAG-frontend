@@ -63,10 +63,12 @@ export async function POST(req: Request) {
   } = await req.json();
 
   if (MOCK_CHAT) {
-    const lastUser = [...messages].reverse().find((m) => m.role === "user") as {
-      role: string;
-      content?: string | Array<{ type: string; text?: string }>;
-    } | undefined;
+    const lastUser = [...messages].reverse().find((m) => m.role === "user") as
+      | {
+          role: string;
+          content?: string | Array<{ type: string; text?: string }>;
+        }
+      | undefined;
     const lastContent =
       typeof lastUser?.content === "string"
         ? lastUser.content
