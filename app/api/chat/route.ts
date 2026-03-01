@@ -29,6 +29,8 @@ function buildMockStreamChunks(lastUserContent: string) {
           };
           outputTokens: {
             total: number;
+            text: number;
+            reasoning: number;
           };
           totalTokens: number;
         };
@@ -45,7 +47,7 @@ function buildMockStreamChunks(lastUserContent: string) {
     finishReason: "stop",
     usage: {
       inputTokens: { total: 0, noCache: 0, cacheRead: 0, cacheWrite: 0 },
-      outputTokens: { total: reply.length },
+      outputTokens: { total: reply.length, text: reply.length, reasoning: 0 },
       totalTokens: reply.length,
     },
   });
@@ -83,6 +85,7 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: new MockLanguageModelV3({
+        // @ts-expect-error Mock model types are complex
         doStream: async () => ({
           stream: simulateReadableStream({
             chunks,
@@ -102,6 +105,7 @@ export async function POST(req: Request) {
     messages: await convertToModelMessages(messages),
     system,
     tools: {
+      // @ts-expect-error frontendTools type mismatch
       ...frontendTools(tools ?? {}),
     },
     providerOptions: {
