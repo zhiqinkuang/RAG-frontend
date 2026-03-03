@@ -13,6 +13,8 @@ import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import ShikiHighlighter from "@/components/assistant-ui/syntax-highlighter";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const MarkdownTextImpl = () => {
@@ -28,6 +30,7 @@ const MarkdownTextImpl = () => {
 export const MarkdownText = memo(MarkdownTextImpl);
 
 const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
+  const { t } = useI18n();
   const { isCopied, copyToClipboard } = useCopyToClipboard();
   const onCopy = () => {
     if (!code || isCopied) return;
@@ -35,13 +38,23 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   };
 
   return (
-    <div className="aui-code-header-root mt-2.5 flex items-center justify-between rounded-t-lg border border-border/50 border-b-0 bg-muted/50 px-3 py-1.5 text-xs">
-      <span className="aui-code-header-language font-medium text-muted-foreground lowercase">
-        {language}
+    <div
+      className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-xl border px-3.5 py-2 text-xs"
+      style={{
+        background: "#252526",
+        borderColor: "#3c3c3c",
+        borderBottom: "none",
+        borderLeftWidth: "3px",
+        borderLeftColor: "#007acc",
+        color: "#9d9d9d",
+      }}
+    >
+      <span className="aui-code-header-language font-medium lowercase tracking-wide">
+        {language || "plain"}
       </span>
-      <TooltipIconButton tooltip="Copy" onClick={onCopy}>
-        {!isCopied && <CopyIcon />}
-        {isCopied && <CheckIcon />}
+      <TooltipIconButton tooltip={t.copyCode} onClick={onCopy}>
+        {!isCopied && <CopyIcon className="size-3.5 opacity-80" />}
+        {isCopied && <CheckIcon className="size-3.5 text-green-400" />}
       </TooltipIconButton>
     </div>
   );
@@ -220,9 +233,17 @@ const defaultComponents = memoizeMarkdownComponents({
   pre: ({ className, ...props }) => (
     <pre
       className={cn(
-        "aui-md-pre overflow-x-auto rounded-t-none rounded-b-lg border border-border/50 border-t-0 bg-muted/30 p-3 text-xs leading-relaxed",
+        "aui-md-pre overflow-x-auto rounded-b-xl rounded-t-none border border-t-0 px-4 py-3.5 text-[13px] leading-[1.6] font-mono selection:bg-[#264f78]",
         className,
       )}
+      style={{
+        background: "#1e1e1e",
+        color: "#d4d4d4",
+        borderColor: "#3c3c3c",
+        borderLeftWidth: "3px",
+        borderLeftColor: "#007acc",
+        caretColor: "#d4d4d4",
+      }}
       {...props}
     />
   ),
@@ -232,12 +253,15 @@ const defaultComponents = memoizeMarkdownComponents({
       <code
         className={cn(
           !isCodeBlock &&
-            "aui-md-inline-code rounded-md border border-border/50 bg-muted/50 px-1.5 py-0.5 font-mono text-[0.85em]",
+            "aui-md-inline-code rounded border border-border/60 bg-muted/70 px-1.5 py-0.5 font-mono text-[0.9em] text-foreground",
+          isCodeBlock && "aui-md-block-code bg-transparent p-0 text-inherit",
           className,
         )}
+        style={isCodeBlock ? { color: "#d4d4d4" } : undefined}
         {...props}
       />
     );
   },
   CodeHeader,
+  SyntaxHighlighter: ShikiHighlighter,
 });

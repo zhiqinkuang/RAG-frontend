@@ -1,7 +1,17 @@
 "use client";
 
 import { PropsWithChildren, useEffect, useState, type FC } from "react";
-import { XIcon, PlusIcon, FileText } from "lucide-react";
+import {
+  XIcon,
+  PlusIcon,
+  FileText,
+  FileAudio,
+  FileVideo,
+  FileSpreadsheet,
+  Presentation,
+  FileImage,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   AttachmentPrimitive,
   ComposerPrimitive,
@@ -23,7 +33,28 @@ import {
 } from "@/components/ui/dialog";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+
+type FileTypeInfo = { Icon: LucideIcon; color: string; label: string };
+
+function getFileTypeInfo(contentType: string): FileTypeInfo {
+  if (contentType.startsWith("image/"))
+    return { Icon: FileImage, color: "text-purple-500", label: "IMG" };
+  if (contentType === "application/pdf")
+    return { Icon: FileText, color: "text-red-500", label: "PDF" };
+  if (contentType.includes("word") || contentType.includes("msword"))
+    return { Icon: FileText, color: "text-blue-500", label: "DOC" };
+  if (contentType.includes("spreadsheet") || contentType.includes("excel"))
+    return { Icon: FileSpreadsheet, color: "text-green-600", label: "XLS" };
+  if (contentType.includes("presentation") || contentType.includes("powerpoint"))
+    return { Icon: Presentation, color: "text-orange-500", label: "PPT" };
+  if (contentType.startsWith("video/"))
+    return { Icon: FileVideo, color: "text-pink-500", label: "VID" };
+  if (contentType.startsWith("audio/"))
+    return { Icon: FileAudio, color: "text-yellow-500", label: "AUD" };
+  return { Icon: FileText, color: "text-muted-foreground", label: "FILE" };
+}
 
 const useFileSrc = (file: File | undefined) => {
   const [src, setSrc] = useState<string | undefined>(undefined);
@@ -108,7 +139,9 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
 
 const AttachmentThumb: FC = () => {
   const isImage = useAuiState((s) => s.attachment.type === "image");
+  const contentType = useAuiState((s) => (s.attachment as { contentType?: string }).contentType ?? "");
   const src = useAttachmentSrc();
+  const { Icon, color, label } = getFileTypeInfo(contentType);
 
   return (
     <Avatar className="aui-attachment-tile-avatar h-full w-full rounded-none">
@@ -117,8 +150,13 @@ const AttachmentThumb: FC = () => {
         alt="Attachment preview"
         className="aui-attachment-tile-image object-cover"
       />
-      <AvatarFallback delayMs={isImage ? 200 : 0}>
-        <FileText className="aui-attachment-tile-fallback-icon size-8 text-muted-foreground" />
+      <AvatarFallback delayMs={isImage ? 200 : 0} className="rounded-none bg-muted">
+        <div className="flex h-full w-full flex-col items-center justify-center gap-0.5">
+          <Icon className={cn("size-6", color)} />
+          <span className={cn("text-[9px] font-bold uppercase tracking-wider leading-none", color)}>
+            {label}
+          </span>
+        </div>
       </AvatarFallback>
     </Avatar>
   );
@@ -126,6 +164,7 @@ const AttachmentThumb: FC = () => {
 
 const AttachmentUI: FC = () => {
   const aui = useAui();
+  const { t } = useI18n();
   const isComposer = aui.attachment.source === "composer";
 
   const isImage = useAuiState((s) => s.attachment.type === "image");
@@ -179,10 +218,11 @@ const AttachmentUI: FC = () => {
 };
 
 const AttachmentRemove: FC = () => {
+  const { t } = useI18n();
   return (
     <AttachmentPrimitive.Remove asChild>
       <TooltipIconButton
-        tooltip="Remove file"
+        tooltip={t.removeAttachment}
         className="aui-attachment-tile-remove absolute top-1.5 right-1.5 size-3.5 rounded-full bg-white text-muted-foreground opacity-100 shadow-sm hover:bg-white! [&_svg]:text-black hover:[&_svg]:text-destructive"
         side="top"
       >
@@ -211,15 +251,16 @@ export const ComposerAttachments: FC = () => {
 };
 
 export const ComposerAddAttachment: FC = () => {
+  const { t } = useI18n();
   return (
     <ComposerPrimitive.AddAttachment asChild>
       <TooltipIconButton
-        tooltip="Add Attachment"
+        tooltip={t.addAttachment}
         side="bottom"
         variant="ghost"
         size="icon"
         className="aui-composer-add-attachment size-8.5 rounded-full p-1 font-semibold text-xs hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
-        aria-label="Add Attachment"
+        aria-label={t.addAttachment}
       >
         <PlusIcon className="aui-attachment-add-icon size-5 stroke-[1.5px]" />
       </TooltipIconButton>

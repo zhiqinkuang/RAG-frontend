@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ComposerAddAttachment,
   ComposerAttachments,
@@ -8,6 +10,7 @@ import { Reasoning, ReasoningGroup } from "@/components/assistant-ui/reasoning";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
   ActionBarMorePrimitive,
@@ -19,6 +22,9 @@ import {
   MessagePrimitive,
   SuggestionPrimitive,
   ThreadPrimitive,
+  useAssistantState,
+  useAui,
+  useAuiState,
 } from "@assistant-ui/react";
 import {
   ArrowDownIcon,
@@ -32,8 +38,14 @@ import {
   PencilIcon,
   RefreshCwIcon,
   SquareIcon,
+  XIcon,
+  ClockIcon,
 } from "lucide-react";
 import type { FC } from "react";
+import { useQueue } from "@/lib/queue-context";
+import { customAttachmentAdapter } from "@/lib/attachment-adapter";
+import type { KeyboardEvent } from "react";
+import type { Attachment } from "@assistant-ui/react";
 
 export const Thread: FC = () => {
   return (
@@ -83,15 +95,16 @@ const ThreadScrollToBottom: FC = () => {
 };
 
 const ThreadWelcome: FC = () => {
+  const { t } = useI18n();
   return (
     <div className="aui-thread-welcome-root mx-auto my-auto flex w-full max-w-(--thread-max-width) grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
         <div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4">
           <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200">
-            Hello there!
+            {t.greetingTitle}
           </h1>
           <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-xl delay-75 duration-200">
-            How can I help you today?
+            {t.greetingSubtitle}
           </p>
         </div>
       </div>
@@ -132,17 +145,130 @@ const ThreadSuggestionItem: FC = () => {
   );
 };
 
+const ComposerQueue: FC = () => {
+  const { items, removeItem } = useQueue();
+  const { t } = useI18n();
+  if (items.length === 0) return null;
+
+  return (
+    <div className="mb-2 flex flex-col gap-1">
+      <div className="flex items-center gap-1.5 px-1 text-muted-foreground text-xs">
+        <ClockIcon className="size-3" />
+        <span>{t.queueTitle}</span>
+        <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none">
+          {items.length}
+        </span>
+      </div>
+      {items.map((item, i) => (
+        <div
+          key={item.id}
+          className="group flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm"
+        >
+          <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground/60">
+            {i + 1}
+          </span>
+          <span className="flex-1 truncate text-foreground/80">
+            {item.attachments && item.attachments.length > 0 && (
+              <span className="mr-1 text-muted-foreground/60" title={item.attachments.map((a) => a.name).join(", ")}>
+                📎{item.attachments.length}
+              </span>
+            )}
+            {item.text || "…"}
+          </span>
+          <button
+            type="button"
+            onClick={() => removeItem(item.id)}
+            aria-label={t.queueRemove}
+            className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <XIcon className="size-3" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * Returns an async callback that captures the current composer text + attachments
+ * into the local queue (instead of calling the SDK's send, which is blocked during inference).
+ * Pending attachments are processed through the adapter to get base64 data URLs before queuing.
+ */
+const useQueueCapture = () => {
+  const { addItem } = useQueue();
+  const aui = useAui();
+  const canCapture = useAuiState((s) => s.thread.isRunning && s.composer.isEditing && !s.composer.isEmpty);
+  if (!canCapture) return null;
+
+  return async () => {
+    const state = aui.composer().getState();
+    const text = state.text.trim();
+    const pendingAttachments = state.attachments as Attachment[];
+
+    // Process any pending attachments through the adapter so we have complete data URLs
+    const completeAttachments = await Promise.all(
+      pendingAttachments.map(async (a) => {
+        if (a.status.type === "complete") return a;
+        // PendingAttachment has a file property
+        const pending = a as Attachment & { file: File };
+        if (!pending.file) return a;
+        return customAttachmentAdapter.send(pending as Parameters<typeof customAttachmentAdapter.send>[0]);
+      })
+    );
+
+    addItem(text, completeAttachments as Attachment[]);
+    aui.composer().setText("");
+    aui.composer().clearAttachments();
+  };
+};
+
 const Composer: FC = () => {
+  const { t } = useI18n();
+  const aui = useAui();
+  const isRunning = useAssistantState((s) => s.thread.isRunning);
+  const { addItem } = useQueue();
+
+  // When running, intercept Enter to enqueue instead of attempting SDK send
+  const handleKeyDownWhileRunning = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (
+      isRunning &&
+      e.key === "Enter" &&
+      !e.shiftKey &&
+      !(e.nativeEvent as unknown as InputEvent & { isComposing?: boolean }).isComposing
+    ) {
+      e.preventDefault();
+      const state = aui.composer().getState();
+      const text = state.text.trim();
+      if (!text) return;
+
+      const pendingAttachments = state.attachments as Attachment[];
+      const completeAttachments = await Promise.all(
+        pendingAttachments.map(async (a) => {
+          if (a.status.type === "complete") return a;
+          const pending = a as Attachment & { file: File };
+          if (!pending.file) return a;
+          return customAttachmentAdapter.send(pending as Parameters<typeof customAttachmentAdapter.send>[0]);
+        })
+      );
+
+      addItem(text, completeAttachments as Attachment[]);
+      aui.composer().setText("");
+      aui.composer().clearAttachments();
+    }
+  };
+
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+      <ComposerQueue />
       <ComposerPrimitive.AttachmentDropzone className="aui-composer-attachment-dropzone flex w-full flex-col rounded-2xl border border-input bg-background px-1 pt-2 outline-none transition-shadow has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-ring/20 data-[dragging=true]:border-ring data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/50">
         <ComposerAttachments />
         <ComposerPrimitive.Input
-          placeholder="Send a message..."
+          placeholder={t.sendMessagePlaceholder}
           className="aui-composer-input mb-1 max-h-32 min-h-14 w-full resize-none bg-transparent px-4 pt-2 pb-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0"
           rows={1}
           autoFocus
-          aria-label="Message input"
+          aria-label={t.messageInputAria}
+          onKeyDown={handleKeyDownWhileRunning}
         />
         <ComposerAction />
       </ComposerPrimitive.AttachmentDropzone>
@@ -151,37 +277,58 @@ const Composer: FC = () => {
 };
 
 const ComposerAction: FC = () => {
+  const { t } = useI18n();
+  const isRunning = useAssistantState((s) => s.thread.isRunning);
+  const captureToQueue = useQueueCapture();
+
   return (
     <div className="aui-composer-action-wrapper relative mx-2 mb-2 flex items-center justify-between">
       <ComposerAddAttachment />
-      <AuiIf condition={(s) => !s.thread.isRunning}>
-        <ComposerPrimitive.Send asChild>
+      <div className="flex items-center gap-1">
+        <AuiIf condition={(s) => s.thread.isRunning}>
+          <ComposerPrimitive.Cancel asChild>
+            <Button
+              type="button"
+              variant="default"
+              size="icon"
+              className="aui-composer-cancel size-8 rounded-full"
+              aria-label={t.stopGenerating}
+            >
+              <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
+            </Button>
+          </ComposerPrimitive.Cancel>
+        </AuiIf>
+        {isRunning ? (
+          // Capture text into queue instead of attempting SDK send (which creates duplicate IDs)
           <TooltipIconButton
-            tooltip="Send message"
+            tooltip={t.sendQueued}
             side="bottom"
-            type="submit"
-            variant="default"
-            size="icon"
-            className="aui-composer-send size-8 rounded-full"
-            aria-label="Send message"
-          >
-            <ArrowUpIcon className="aui-composer-send-icon size-4" />
-          </TooltipIconButton>
-        </ComposerPrimitive.Send>
-      </AuiIf>
-      <AuiIf condition={(s) => s.thread.isRunning}>
-        <ComposerPrimitive.Cancel asChild>
-          <Button
             type="button"
             variant="default"
             size="icon"
-            className="aui-composer-cancel size-8 rounded-full"
-            aria-label="Stop generating"
+            disabled={!captureToQueue}
+            onClick={() => captureToQueue?.()}
+            className="aui-composer-send size-8 rounded-full disabled:opacity-40"
+            aria-label={t.sendQueued}
           >
-            <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
-          </Button>
-        </ComposerPrimitive.Cancel>
-      </AuiIf>
+            <ArrowUpIcon className="aui-composer-send-icon size-4" />
+          </TooltipIconButton>
+        ) : (
+          <ComposerPrimitive.Send asChild>
+            <TooltipIconButton
+              tooltip={t.sendMessage}
+              side="bottom"
+              type="submit"
+              variant="default"
+              size="icon"
+              className="aui-composer-send size-8 rounded-full"
+              aria-label={t.sendMessage}
+            >
+              <ArrowUpIcon className="aui-composer-send-icon size-4" />
+            </TooltipIconButton>
+          </ComposerPrimitive.Send>
+        )}
+      </div>
     </div>
   );
 };
@@ -197,12 +344,21 @@ const MessageError: FC = () => {
 };
 
 const AssistantMessage: FC = () => {
+  const isRunning = useAssistantState(
+    (s) => (s as { message?: { status?: { type?: string } } }).message?.status?.type === "running"
+  );
+  const { t } = useI18n();
   return (
     <MessagePrimitive.Root
       className="aui-assistant-message-root fade-in slide-in-from-bottom-1 relative mx-auto w-full max-w-(--thread-max-width) animate-in py-3 duration-150"
       data-role="assistant"
     >
       <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
+        {isRunning && (
+          <p className="aui-assistant-thinking text-muted-foreground text-sm italic mb-2" aria-live="polite">
+            {t.thinking}
+          </p>
+        )}
         <MessagePrimitive.Parts
           components={{
             Text: MarkdownText,
@@ -310,6 +466,7 @@ const UserActionBar: FC = () => {
 };
 
 const EditComposer: FC = () => {
+  const { t } = useI18n();
   return (
     <MessagePrimitive.Root className="aui-edit-composer-wrapper mx-auto flex w-full max-w-(--thread-max-width) flex-col px-2 py-3">
       <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
@@ -320,11 +477,11 @@ const EditComposer: FC = () => {
         <div className="aui-edit-composer-footer mx-3 mb-3 flex items-center gap-2 self-end">
           <ComposerPrimitive.Cancel asChild>
             <Button variant="ghost" size="sm">
-              Cancel
+              {t.cancel}
             </Button>
           </ComposerPrimitive.Cancel>
           <ComposerPrimitive.Send asChild>
-            <Button size="sm">Update</Button>
+            <Button size="sm">{t.update}</Button>
           </ComposerPrimitive.Send>
         </div>
       </ComposerPrimitive.Root>

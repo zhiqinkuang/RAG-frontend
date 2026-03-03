@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import {
@@ -15,6 +15,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const ANIMATION_DURATION = 200;
@@ -121,7 +122,9 @@ function ReasoningTrigger({
   active?: boolean;
   duration?: number;
 }) {
+  const { t } = useI18n();
   const durationText = duration ? ` (${duration}s)` : "";
+  const label = t.reasoning + durationText;
 
   return (
     <CollapsibleTrigger
@@ -140,14 +143,14 @@ function ReasoningTrigger({
         data-slot="reasoning-trigger-label"
         className="aui-reasoning-trigger-label-wrapper relative inline-block leading-none"
       >
-        <span>Reasoning{durationText}</span>
+        <span>{label}</span>
         {active ? (
           <span
             aria-hidden
             data-slot="reasoning-trigger-shimmer"
             className="aui-reasoning-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
           >
-            Reasoning{durationText}
+            {label}
           </span>
         ) : null}
       </span>
@@ -230,8 +233,21 @@ const ReasoningGroupImpl: ReasoningGroupComponent = ({
     return lastIndex >= startIndex && lastIndex <= endIndex;
   });
 
+  const [open, setOpen] = useState(false);
+  const prevStreaming = useRef(isReasoningStreaming);
+
+  useEffect(() => {
+    if (isReasoningStreaming) {
+      setOpen(true);
+      prevStreaming.current = true;
+    } else if (prevStreaming.current) {
+      setOpen(false);
+      prevStreaming.current = false;
+    }
+  }, [isReasoningStreaming]);
+
   return (
-    <ReasoningRoot defaultOpen={isReasoningStreaming}>
+    <ReasoningRoot open={open} onOpenChange={setOpen}>
       <ReasoningTrigger active={isReasoningStreaming} />
       <ReasoningContent aria-busy={isReasoningStreaming}>
         <ReasoningText>{children}</ReasoningText>
