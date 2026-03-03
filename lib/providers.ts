@@ -6,7 +6,8 @@ export type ProviderId =
   | "zhipu"
   | "qwen"
   | "moonshot"
-  | "custom";
+  | "custom"
+  | "custom-api";
 
 export interface ProviderConfig {
   id: ProviderId;
@@ -61,10 +62,17 @@ export const PROVIDERS: ProviderConfig[] = [
   },
   {
     id: "custom",
-    name: "自定义",
+    name: "自定义 (OpenAI 兼容)",
     baseURL: "",
     defaultModel: "",
     placeholder: "https://your-api.com/v1",
+  },
+  {
+    id: "custom-api",
+    name: "自定义 API 接口",
+    baseURL: "",
+    defaultModel: "",
+    placeholder: "http://localhost:8000/api/chat",
   },
 ];
 

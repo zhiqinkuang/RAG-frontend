@@ -13,6 +13,7 @@
 ### 特性
 
 - **多模型提供商** — 内置支持 OpenAI、DeepSeek、智谱 GLM、通义千问、火山引擎豆包、Moonshot，以及任意 OpenAI 兼容 API
+- **自定义 API 接口** — 支持对接自研后端（RAG、Agent 等），详见 [API 接口文档](docs/API.md)
 - **前端配置 API** — 无需修改环境变量，在设置面板中切换提供商、填写 API Key 和模型名
 - **聊天历史持久化** — 线程列表和消息内容持久化到 localStorage，刷新页面不丢失
 - **消息输入队列** — 模型推理期间可继续输入和发送消息，自动排队依次处理（类似 Cursor）
@@ -103,6 +104,7 @@ A feature-rich AI chat frontend built with Next.js 16 + [assistant-ui](https://g
 ### Features
 
 - **Multiple Model Providers** — Built-in support for OpenAI, DeepSeek, Zhipu GLM, Qwen, Volcengine Doubao, Moonshot, and any OpenAI-compatible API
+- **Custom API Endpoint** — Connect to your own backend (RAG, Agent, etc.), see [API Specification](docs/API.md)
 - **Frontend API Configuration** — Switch providers, enter API keys and model names in the settings panel without touching environment variables
 - **Chat History Persistence** — Thread list and message content persist to localStorage, surviving page refreshes
 - **Message Input Queue** — Continue typing and sending messages while the model is running; messages are automatically queued and processed in order (Cursor-style)

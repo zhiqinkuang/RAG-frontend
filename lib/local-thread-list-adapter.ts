@@ -150,7 +150,14 @@ export class LocalStorageThreadListAdapter {
 
   async fetch(threadId: string) {
     const thread = findThread(threadId);
-    if (!thread) throw new Error("Thread not found");
+    if (!thread) {
+      return {
+        remoteId: threadId,
+        externalId: undefined,
+        title: undefined,
+        status: "regular" as const,
+      };
+    }
     return {
       remoteId: thread.remoteId,
       externalId: thread.externalId,

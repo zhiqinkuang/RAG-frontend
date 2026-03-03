@@ -404,7 +404,45 @@ export async function POST(req: Request) {
       return result.toUIMessageStreamResponse();
     }
 
-    // 使用通用 OpenAI 兼容 API
+    // 自定义 API 模式：直接转发，后端返回 UI Message Stream 格式
+    if (provider === "custom-api") {
+      const apiURL = effectiveBaseURL;
+      if (!apiURL) {
+        return jsonErrorResponse("请填写自定义 API 地址", 400);
+      }
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (effectiveApiKey) {
+        headers["Authorization"] = `Bearer ${effectiveApiKey}`;
+      }
+      const body: Record<string, unknown> = { messages };
+      if (system) body.system = system;
+      if (effectiveModel) body.model = effectiveModel;
+
+      const apiResponse = await fetch(apiURL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (!apiResponse.ok) {
+        const errorText = await apiResponse.text().catch(() => "Unknown error");
+        return new Response(
+          JSON.stringify({ error: errorText || `Custom API error: ${apiResponse.status}` }),
+          { status: apiResponse.status, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(ensureReadableStream(apiResponse.body), {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "x-vercel-ai-ui-message-stream": "v1",
+        },
+      });
+    }
+
+    // OpenAI 兼容 API
     const chatResponse = await streamChat(
       effectiveBaseURL,
       effectiveApiKey || "",

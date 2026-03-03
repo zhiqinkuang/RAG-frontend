@@ -18,6 +18,8 @@ const translations = {
     model: "模型",
     apiKeyConfigured: "API Key 已配置",
     apiKeyRequired: "请配置 API Key 以使用对话功能",
+    apiKeyOptional: "API Key 可选（取决于你的后端是否需要鉴权）",
+    customApiHint: "填写完整的 API 地址，后端需返回 UI Message Stream SSE 格式",
     cancel: "取消",
     save: "保存设置",
     saved: "已保存",
@@ -44,6 +46,27 @@ const translations = {
     deleteThread: "删除",
     moreOptions: "更多选项",
     rename: "重命名",
+    // Settings tabs & sections
+    settingsGeneral: "通用",
+    settingsApi: "API",
+    settingsUser: "用户",
+    // Theme
+    theme: "主题",
+    themeLight: "浅色",
+    themeDark: "深色",
+    themeSystem: "跟随系统",
+    // Language
+    language: "语言",
+    langZh: "中文",
+    langEn: "English",
+    // User info
+    userInfo: "用户信息",
+    nickname: "昵称",
+    nicknamePlaceholder: "请输入昵称",
+    avatar: "头像",
+    avatarHint: "输入头像 URL 或留空使用默认头像",
+    notLoggedIn: "未登录",
+    loginHint: "登录后可同步聊天记录到云端（即将推出）",
   },
   en: {
     settings: "Settings",
@@ -56,6 +79,8 @@ const translations = {
     model: "Model",
     apiKeyConfigured: "API Key configured",
     apiKeyRequired: "Configure API Key to use chat",
+    apiKeyOptional: "API Key is optional (depends on your backend auth)",
+    customApiHint: "Enter full API URL. Backend must return UI Message Stream SSE format.",
     cancel: "Cancel",
     save: "Save",
     saved: "Saved",
@@ -82,6 +107,27 @@ const translations = {
     deleteThread: "Delete",
     moreOptions: "More options",
     rename: "Rename",
+    // Settings tabs & sections
+    settingsGeneral: "General",
+    settingsApi: "API",
+    settingsUser: "User",
+    // Theme
+    theme: "Theme",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeSystem: "System",
+    // Language
+    language: "Language",
+    langZh: "中文",
+    langEn: "English",
+    // User info
+    userInfo: "User Info",
+    nickname: "Nickname",
+    nicknamePlaceholder: "Enter nickname",
+    avatar: "Avatar",
+    avatarHint: "Enter avatar URL or leave blank for default",
+    notLoggedIn: "Not logged in",
+    loginHint: "Login to sync chat history to cloud (coming soon)",
   },
 } as const;
 

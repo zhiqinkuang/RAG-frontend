@@ -22,9 +22,8 @@ import {
 import { ThreadListSidebar } from "@/components/assistant-ui/threadlist-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { SettingsDialog, useApiKey, type ApiKeySettings } from "@/components/settings-dialog";
-import { LangSwitcher } from "@/components/lang-switcher";
 import { useI18n } from "@/lib/i18n";
-import { useMemo, useState, useCallback, useEffect, useRef, type FC } from "react";
+import { Component, useMemo, useState, useCallback, useEffect, useRef, type FC, type ReactNode } from "react";
 import { getProvider } from "@/lib/providers";
 import { QueueContext, useQueue, type QueueItem } from "@/lib/queue-context";
 import type { Attachment } from "@assistant-ui/react";
@@ -146,6 +145,25 @@ const AutoSendQueue: FC = () => {
   return null;
 };
 
+class RuntimeErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; key: number }
+> {
+  state = { hasError: false, key: 0 };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch() {
+    setTimeout(() => {
+      this.setState((s) => ({ hasError: false, key: s.key + 1 }));
+    }, 0);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return <div key={this.state.key}>{this.props.children}</div>;
+  }
+}
+
 export const Assistant = () => {
   const { getSettings } = useApiKey();
   const { t } = useI18n();
@@ -197,35 +215,36 @@ export const Assistant = () => {
     <QueueContext.Provider
       value={{ items: queueItems, addItem: addQueueItem, removeItem: removeQueueItem }}
     >
-      <AssistantRuntimeProvider runtime={runtime}>
-        <AutoSendQueue />
-        <SidebarProvider>
-          <div className="flex h-dvh w-full pr-0.5">
-            <ThreadListSidebar />
-            <SidebarInset>
-              <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-                <SidebarTrigger />
-                <Separator orientation="vertical" className="mr-2 h-4" />
-                <div className="flex flex-1 items-center justify-between">
-                  <h1 className="text-lg font-semibold">
-                    {t.chat}{" "}
-                    <span className="font-normal text-muted-foreground">
-                      · {displayModel}
-                    </span>
-                  </h1>
-                  <div className="flex items-center gap-1">
-                    <LangSwitcher />
-                    <SettingsDialog onSaved={refreshDisplayModel} />
+      <RuntimeErrorBoundary>
+        <AssistantRuntimeProvider runtime={runtime}>
+          <AutoSendQueue />
+          <SidebarProvider>
+            <div className="flex h-dvh w-full pr-0.5">
+              <ThreadListSidebar />
+              <SidebarInset>
+                <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+                  <SidebarTrigger />
+                  <Separator orientation="vertical" className="mr-2 h-4" />
+                  <div className="flex flex-1 items-center justify-between">
+                    <h1 className="text-sm font-medium">
+                      {t.chat}{" "}
+                      <span className="font-normal text-muted-foreground">
+                        · {displayModel}
+                      </span>
+                    </h1>
+                    <div className="flex items-center gap-1">
+                      <SettingsDialog onSaved={refreshDisplayModel} />
+                    </div>
                   </div>
+                </header>
+                <div className="flex-1 overflow-hidden">
+                  <Thread />
                 </div>
-              </header>
-              <div className="flex-1 overflow-hidden">
-                <Thread />
-              </div>
-            </SidebarInset>
-          </div>
-        </SidebarProvider>
-      </AssistantRuntimeProvider>
+              </SidebarInset>
+            </div>
+          </SidebarProvider>
+        </AssistantRuntimeProvider>
+      </RuntimeErrorBoundary>
     </QueueContext.Provider>
   );
 };
