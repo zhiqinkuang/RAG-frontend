@@ -50,6 +50,7 @@ const translations = {
     settingsGeneral: "通用",
     settingsApi: "API",
     settingsUser: "用户",
+    settingsRag: "知识库",
     // Theme
     theme: "主题",
     themeLight: "浅色",
@@ -132,6 +133,7 @@ const translations = {
     settingsGeneral: "General",
     settingsApi: "API",
     settingsUser: "User",
+    settingsRag: "Knowledge Base",
     // Theme
     theme: "Theme",
     themeLight: "Light",

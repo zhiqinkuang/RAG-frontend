@@ -12,6 +12,7 @@ import {
   Monitor,
   Globe,
   User,
+  Database,
 } from "lucide-react";
 import {
   Dialog,
@@ -34,6 +35,7 @@ import {
   ragLogin,
   ragRegister,
 } from "@/lib/rag-auth";
+import { RagSettings } from "@/components/rag-settings";
 
 export interface ApiKeySettings {
   provider: ProviderId;
@@ -53,7 +55,7 @@ const defaultSettings: ApiKeySettings = {
   model: "doubao-seed-2-0-lite-260215",
 };
 
-type Tab = "general" | "api";
+type Tab = "general" | "api" | "rag";
 
 interface SettingsDialogProps {
   onSaved?: () => void;
@@ -200,6 +202,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "api", label: t.settingsApi, icon: <Key className="size-3.5" /> },
+    { id: "rag", label: t.settingsRag, icon: <Database className="size-3.5" /> },
     { id: "general", label: t.settingsGeneral, icon: <Monitor className="size-3.5" /> },
   ];
 
@@ -331,8 +334,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                 </select>
               </div>
 
-              {/* Base URL - 只在 custom/custom-api 模式下显示 */}
-              {showBaseURLInput && (
+              {/* Base URL - RAG 和 custom/custom-api 模式下显示 */}
+              {(isRag || showBaseURLInput) && (
                 <div className="space-y-2">
                   <label htmlFor="baseURL" className="text-sm font-medium">
                     {isCustomApi ? "API URL" : "Base URL"}
@@ -340,7 +343,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                   <Input
                     id="baseURL"
                     type="url"
-                    placeholder={currentProvider.placeholder || "https://api.example.com/v1"}
+                    placeholder={currentProvider.placeholder || "http://127.0.0.1:8080"}
                     value={settings.baseURL}
                     className="h-10 text-sm"
                     onChange={(e) =>
@@ -350,6 +353,11 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                       }))
                     }
                   />
+                  {isRag && (
+                    <p className="text-xs text-muted-foreground">
+                      RAG 后端服务地址
+                    </p>
+                  )}
                   {isCustomApi && (
                     <p className="text-xs text-muted-foreground">
                       {t.customApiHint}
@@ -418,6 +426,9 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                       }));
                     }}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    可在"知识库"标签页管理知识库
+                  </p>
                 </div>
               )}
 
@@ -576,6 +587,16 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                 )}
               </div>
             </div>
+          )}
+
+          {/* ---- RAG Tab ---- */}
+          {tab === "rag" && (
+            <RagSettings
+              selectedKbId={settings.knowledgeBaseId}
+              onKnowledgeBaseChange={(kbId) => {
+                setSettings((prev) => ({ ...prev, knowledgeBaseId: kbId }));
+              }}
+            />
           )}
         </div>
 
