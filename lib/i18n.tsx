@@ -67,6 +67,27 @@ const translations = {
     avatarHint: "输入头像 URL 或留空使用默认头像",
     notLoggedIn: "未登录",
     loginHint: "登录后可同步聊天记录到云端（即将推出）",
+    // Suggestions
+    suggestionsTitle: "你可能想问",
+    // RAG
+    knowledgeBaseId: "知识库 ID",
+    knowledgeBaseIdPlaceholder: "可选，留空则不指定",
+    ragApiHint: "Base URL 为 RAG 后端地址；API Key 为登录后获得的 Token。",
+    // Auth (RAG)
+    login: "登录",
+    register: "注册",
+    logout: "退出登录",
+    email: "邮箱",
+    password: "密码",
+    username: "用户名",
+    loginTitle: "RAG 账号登录",
+    registerTitle: "注册 RAG 账号",
+    loginWithRagHint: "请先在 API 中选择 RAG 知识库并填写 Base URL，再在此登录。",
+    loginSuccess: "登录成功，Token 已写入 API Key",
+    registerSuccess: "注册成功，请登录",
+    ragAccount: "RAG 账号",
+    ragBaseUrlRequired: "请先在 API 中填写 Base URL",
+    passwordMinLength: "密码至少 6 位",
   },
   en: {
     settings: "Settings",
@@ -128,6 +149,27 @@ const translations = {
     avatarHint: "Enter avatar URL or leave blank for default",
     notLoggedIn: "Not logged in",
     loginHint: "Login to sync chat history to cloud (coming soon)",
+    // Suggestions
+    suggestionsTitle: "You might want to ask",
+    // RAG
+    knowledgeBaseId: "Knowledge Base ID",
+    knowledgeBaseIdPlaceholder: "Optional, leave empty to not specify",
+    ragApiHint: "Base URL is your RAG backend; API Key is the token from login.",
+    // Auth (RAG)
+    login: "Login",
+    register: "Register",
+    logout: "Log out",
+    email: "Email",
+    password: "Password",
+    username: "Username",
+    loginTitle: "RAG Account Login",
+    registerTitle: "Register RAG Account",
+    loginWithRagHint: "Select RAG Knowledge Base and set Base URL in API tab first, then login here.",
+    loginSuccess: "Login successful, token saved to API Key",
+    registerSuccess: "Registered. Please log in.",
+    ragAccount: "RAG Account",
+    ragBaseUrlRequired: "Please set Base URL in API tab first",
+    passwordMinLength: "Password must be at least 6 characters",
   },
 } as const;
 

@@ -41,7 +41,7 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
     <div
       className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-xl border px-3.5 py-2 text-xs"
       style={{
-        background: "#252526",
+        background: "#000000",
         borderColor: "#3c3c3c",
         borderBottom: "none",
         borderLeftWidth: "3px",
@@ -237,7 +237,7 @@ const defaultComponents = memoizeMarkdownComponents({
         className,
       )}
       style={{
-        background: "#1e1e1e",
+        background: "#000000",
         color: "#d4d4d4",
         borderColor: "#3c3c3c",
         borderLeftWidth: "3px",

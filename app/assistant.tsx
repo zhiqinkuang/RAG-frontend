@@ -48,16 +48,17 @@ class CustomChatTransport extends AssistantChatTransport<UIMessage> {
       typeof options.body === "object" && options.body !== null
         ? { ...options.body }
         : {};
-    return {
-      ...options,
-      body: {
-        ...body,
-        provider: settings.provider,
-        apiKey: settings.apiKey,
-        baseURL: settings.baseURL || undefined,
-        model: settings.model,
-      },
+    const next: Record<string, unknown> = {
+      ...body,
+      provider: settings.provider,
+      apiKey: settings.apiKey,
+      baseURL: settings.baseURL || undefined,
+      model: settings.model,
     };
+    if (settings.provider === "rag" && settings.knowledgeBaseId != null && settings.knowledgeBaseId > 0) {
+      next.knowledgeBaseId = settings.knowledgeBaseId;
+    }
+    return { ...options, body: next };
   }
 
   override sendMessages(options: SendMessagesOptions): Promise<SendMessagesResult> {

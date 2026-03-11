@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthGuard } from "@/components/auth-guard";
 import { I18nProvider } from "@/lib/i18n";
 import { ThemeProvider } from "@/lib/theme";
 import "./globals.css";
@@ -39,7 +40,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <TooltipProvider>
-            <I18nProvider>{children}</I18nProvider>
+            <I18nProvider>
+            <AuthGuard>{children}</AuthGuard>
+          </I18nProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

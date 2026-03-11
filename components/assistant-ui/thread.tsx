@@ -41,11 +41,13 @@ import {
   XIcon,
   ClockIcon,
 } from "lucide-react";
-import type { FC } from "react";
+import { useState, useEffect, useCallback, useRef, type FC } from "react";
 import { useQueue } from "@/lib/queue-context";
 import { customAttachmentAdapter } from "@/lib/attachment-adapter";
 import type { KeyboardEvent } from "react";
 import type { Attachment } from "@assistant-ui/react";
+import { useApiKey } from "@/components/settings-dialog";
+import { SparklesIcon } from "lucide-react";
 
 export const Thread: FC = () => {
   return (
@@ -70,6 +72,8 @@ export const Thread: FC = () => {
             AssistantMessage,
           }}
         />
+
+        <FollowUpSuggestions />
 
         <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mx-auto mt-auto flex w-full max-w-(--thread-max-width) flex-col gap-4 overflow-visible rounded-t-3xl bg-background pb-4 md:pb-6">
           <ThreadScrollToBottom />
@@ -141,6 +145,122 @@ const ThreadSuggestionItem: FC = () => {
           </span>
         </Button>
       </SuggestionPrimitive.Trigger>
+    </div>
+  );
+};
+
+const EMPTY_SUGGESTIONS: string[] = [];
+
+const FollowUpSuggestions: FC = () => {
+  const { t } = useI18n();
+  const { getSettings } = useApiKey();
+  const aui = useAui();
+  const isRunning = useAssistantState((s) => s.thread.isRunning);
+
+  const [suggestions, setSuggestions] = useState<string[]>(EMPTY_SUGGESTIONS);
+  const [loading, setLoading] = useState(false);
+  const prevRunningRef = useRef(isRunning);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const wasRunning = prevRunningRef.current;
+    prevRunningRef.current = isRunning;
+
+    // Only fetch when transitioning from running → idle
+    if (wasRunning && !isRunning) {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const settings = getSettings();
+
+      // Read messages imperatively from the runtime
+      const threadState = aui.thread().getState();
+      const allMsgs = (threadState as unknown as { messages?: { role: string; parts?: { type?: string; text?: string }[] }[] }).messages ?? [];
+
+      if (allMsgs.length === 0) return;
+
+      const simpleMsgs = allMsgs.slice(-6).map((m) => {
+        const text = Array.isArray(m.parts)
+          ? m.parts
+              .filter((p) => p.type === "text")
+              .map((p) => p.text ?? "")
+              .join("")
+          : "";
+        return { role: m.role, content: text };
+      });
+
+      setLoading(true);
+      setSuggestions(EMPTY_SUGGESTIONS);
+
+      fetch("/api/suggestions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: simpleMsgs,
+          provider: settings.provider,
+          apiKey: settings.apiKey,
+          baseURL: settings.baseURL,
+          model: settings.model,
+        }),
+        signal: controller.signal,
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data.suggestions)) {
+            setSuggestions(data.suggestions.slice(0, 3));
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    }
+
+    // Clear suggestions when a new run starts
+    if (isRunning) {
+      abortRef.current?.abort();
+      setSuggestions(EMPTY_SUGGESTIONS);
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRunning]);
+
+  const handleClick = useCallback(
+    (text: string) => {
+      aui.thread().append({ role: "user", content: [{ type: "text", text }] });
+      setSuggestions([]);
+    },
+    [aui],
+  );
+
+  if (isRunning || (suggestions.length === 0 && !loading)) {
+    return null;
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-(--thread-max-width) px-2 pb-2">
+      <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
+        <SparklesIcon className="size-3" />
+        <span>{t.suggestionsTitle}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {loading
+          ? Array.from({ length: 3 }, (_, i) => (
+              <div
+                key={i}
+                className="h-8 w-36 animate-pulse rounded-full bg-muted"
+              />
+            ))
+          : suggestions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => handleClick(s)}
+                className="rounded-full border border-border bg-background px-3.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted hover:border-foreground/20 active:scale-[0.97]"
+              >
+                {s}
+              </button>
+            ))}
+      </div>
     </div>
   );
 };

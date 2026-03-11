@@ -26,16 +26,25 @@ import { Input } from "@/components/ui/input";
 import { PROVIDERS, getProvider, type ProviderId } from "@/lib/providers";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { useTheme, type Theme } from "@/lib/theme";
+import {
+  getStoredRagUser,
+  getStoredRagToken,
+  setStoredRagAuth,
+  clearStoredRagAuth,
+  ragLogin,
+  ragRegister,
+} from "@/lib/rag-auth";
 
 export interface ApiKeySettings {
   provider: ProviderId;
   apiKey: string;
   baseURL: string;
   model: string;
+  /** RAG 知识库 ID，仅当 provider 为 rag 时使用 */
+  knowledgeBaseId?: number;
 }
 
 const STORAGE_KEY = "chat-settings";
-const USER_STORAGE_KEY = "chat-user";
 
 const defaultSettings: ApiKeySettings = {
   provider: "doubao",
@@ -44,10 +53,7 @@ const defaultSettings: ApiKeySettings = {
   model: "doubao-seed-2-0-lite-260215",
 };
 
-type UserInfo = { nickname: string; avatar: string };
-const defaultUser: UserInfo = { nickname: "", avatar: "" };
-
-type Tab = "general" | "api" | "user";
+type Tab = "general" | "api";
 
 interface SettingsDialogProps {
   onSaved?: () => void;
@@ -58,12 +64,71 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("general");
+  const [tab, setTab] = useState<Tab>("api");
   const [settings, setSettings] = useState<ApiKeySettings>(defaultSettings);
-  const [user, setUser] = useState<UserInfo>(defaultUser);
   const [saved, setSaved] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [ragUser, setRagUser] = useState<ReturnType<typeof getStoredRagUser>>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
+
+  const handleRagLogin = async () => {
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const res = await ragLogin(settings.baseURL.trim() || "http://127.0.0.1:8080", authEmail.trim(), authPassword);
+      setStoredRagAuth(res.token, res.user);
+      setRagUser(res.user);
+      setSettings((prev) => ({ ...prev, apiKey: res.token }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, apiKey: res.token }));
+      // 触发自定义事件通知其他组件更新
+      window.dispatchEvent(new CustomEvent("rag-auth-changed"));
+      onSaved?.();
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : "Login failed");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRagRegister = async () => {
+    if (authPassword.length < 6) {
+      setAuthError(t.passwordMinLength);
+      return;
+    }
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      await ragRegister(settings.baseURL.trim() || "http://127.0.0.1:8080", authUsername.trim(), authEmail.trim(), authPassword);
+      setAuthMode("login");
+      setAuthUsername("");
+      setAuthError("注册成功，请登录");
+    } catch (e) {
+      setAuthError(e instanceof Error ? e.message : "Register failed");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleRagLogout = () => {
+    clearStoredRagAuth();
+    setRagUser(null);
+    setSettings((prev) => ({ ...prev, apiKey: "" }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, apiKey: "" }));
+    // 触发自定义事件通知其他组件更新
+    window.dispatchEvent(new CustomEvent("rag-auth-changed"));
+    onSaved?.();
+  };
 
   React.useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    setRagUser(getStoredRagUser());
+  }, [mounted, open, tab]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -78,37 +143,38 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
           apiKey: parsed.apiKey ?? "",
           baseURL: parsed.baseURL ?? prov.baseURL,
           model: parsed.model ?? prov.defaultModel,
+          knowledgeBaseId: parsed.knowledgeBaseId,
         });
       } catch {
         setSettings({ ...defaultSettings });
       }
     }
-    const userRaw = localStorage.getItem(USER_STORAGE_KEY);
-    if (userRaw) {
-      try {
-        setUser({ ...defaultUser, ...JSON.parse(userRaw) });
-      } catch {
-        setUser({ ...defaultUser });
-      }
-    }
   }, [mounted, open]);
+
+  // RAG 模式下，自动同步 token
+  useEffect(() => {
+    if (!mounted) return;
+    const token = getStoredRagToken();
+    if (settings.provider === "rag" && token && settings.apiKey !== token) {
+      setSettings((prev) => ({ ...prev, apiKey: token }));
+    }
+  }, [mounted, settings.provider, settings.apiKey]);
 
   const handleProviderChange = (provider: ProviderId) => {
     const prov = getProvider(provider);
+    const token = provider === "rag" ? getStoredRagToken() || "" : "";
     setSettings((prev) => ({
       ...prev,
       provider,
-      baseURL:
-        prev.baseURL && (prev.provider === "custom" || prev.provider === "custom-api")
-          ? prev.baseURL
-          : prov.baseURL,
+      baseURL: prov.baseURL,
       model: prov.defaultModel,
+      apiKey: provider === "rag" ? token : prev.apiKey,
+      knowledgeBaseId: provider === "rag" ? (prev.knowledgeBaseId ?? undefined) : undefined,
     }));
   };
 
   const handleSave = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     setSaved(true);
     onSaved?.();
     setTimeout(() => {
@@ -120,8 +186,9 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
   const currentProvider = getProvider(settings.provider);
   const hasApiKey = settings.apiKey.length > 0;
   const isCustomApi = settings.provider === "custom-api";
-  const showBaseURL =
-    settings.provider === "custom" || isCustomApi || !currentProvider.baseURL;
+  const isRag = settings.provider === "rag";
+  // 只有 custom 和 custom-api 需要显示 Base URL 输入框
+  const showBaseURLInput = settings.provider === "custom" || isCustomApi;
 
   if (!mounted) {
     return (
@@ -132,9 +199,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "general", label: t.settingsGeneral, icon: <Monitor className="size-3.5" /> },
     { id: "api", label: t.settingsApi, icon: <Key className="size-3.5" /> },
-    { id: "user", label: t.settingsUser, icon: <User className="size-3.5" /> },
+    { id: "general", label: t.settingsGeneral, icon: <Monitor className="size-3.5" /> },
   ];
 
   const themeOptions: { value: Theme; label: string; icon: React.ReactNode }[] = [
@@ -265,7 +331,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                 </select>
               </div>
 
-              {showBaseURL && (
+              {/* Base URL - 只在 custom/custom-api 模式下显示 */}
+              {showBaseURLInput && (
                 <div className="space-y-2">
                   <label htmlFor="baseURL" className="text-sm font-medium">
                     {isCustomApi ? "API URL" : "Base URL"}
@@ -273,9 +340,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                   <Input
                     id="baseURL"
                     type="url"
-                    placeholder={
-                      currentProvider.placeholder || "https://api.example.com/v1"
-                    }
+                    placeholder={currentProvider.placeholder || "https://api.example.com/v1"}
                     value={settings.baseURL}
                     className="h-10 text-sm"
                     onChange={(e) =>
@@ -293,25 +358,29 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label htmlFor="apiKey" className="text-sm font-medium">
-                  {t.apiKey}
-                </label>
-                <Input
-                  id="apiKey"
-                  type="password"
-                  placeholder={t.apiKeyPlaceholder}
-                  value={settings.apiKey}
-                  className="h-10 text-sm"
-                  onChange={(e) =>
-                    setSettings((prev) => ({
-                      ...prev,
-                      apiKey: e.target.value,
-                    }))
-                  }
-                />
-              </div>
+              {/* API Key - RAG 模式不显示，其他模式显示 */}
+              {!isRag && (
+                <div className="space-y-2">
+                  <label htmlFor="apiKey" className="text-sm font-medium">
+                    {t.apiKey}
+                  </label>
+                  <Input
+                    id="apiKey"
+                    type="password"
+                    placeholder={t.apiKeyPlaceholder}
+                    value={settings.apiKey}
+                    className="h-10 text-sm"
+                    onChange={(e) =>
+                      setSettings((prev) => ({
+                        ...prev,
+                        apiKey: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              )}
 
+              {/* Model */}
               <div className="space-y-2">
                 <label htmlFor="model" className="text-sm font-medium">
                   {t.model}
@@ -328,6 +397,160 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                 />
               </div>
 
+              {/* RAG 知识库 ID */}
+              {isRag && (
+                <div className="space-y-2">
+                  <label htmlFor="knowledgeBaseId" className="text-sm font-medium">
+                    {t.knowledgeBaseId}
+                  </label>
+                  <Input
+                    id="knowledgeBaseId"
+                    type="number"
+                    min={1}
+                    placeholder={t.knowledgeBaseIdPlaceholder}
+                    value={settings.knowledgeBaseId ?? ""}
+                    className="h-10 text-sm"
+                    onChange={(e) => {
+                      const v = e.target.value.trim();
+                      setSettings((prev) => ({
+                        ...prev,
+                        knowledgeBaseId: v === "" ? undefined : parseInt(v, 10) || undefined,
+                      }));
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* RAG 登录区域 */}
+              {isRag && (
+                <div className="space-y-3 rounded-lg border p-4">
+                  <div className="text-sm font-medium">{t.ragAccount}</div>
+                  {ragUser && getStoredRagToken() ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
+                          {ragUser.avatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={ragUser.avatar}
+                              alt=""
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <User className="size-5 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1 text-sm">
+                          <div className="font-medium">{ragUser.username}</div>
+                          <div className="truncate text-muted-foreground text-xs">
+                            {ragUser.email}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={handleRagLogout}
+                      >
+                        {t.logout}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className={`flex-1 rounded-lg border px-3 py-1.5 text-sm ${
+                            authMode === "login"
+                              ? "border-primary bg-primary/5"
+                              : "border-input"
+                          }`}
+                          onClick={() => {
+                            setAuthMode("login");
+                            setAuthError("");
+                          }}
+                        >
+                          {t.login}
+                        </button>
+                        <button
+                          type="button"
+                          className={`flex-1 rounded-lg border px-3 py-1.5 text-sm ${
+                            authMode === "register"
+                              ? "border-primary bg-primary/5"
+                              : "border-input"
+                          }`}
+                          onClick={() => {
+                            setAuthMode("register");
+                            setAuthError("");
+                          }}
+                        >
+                          {t.register}
+                        </button>
+                      </div>
+                      {authMode === "register" && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-muted-foreground">
+                            {t.username}
+                          </label>
+                          <Input
+                            type="text"
+                            placeholder={t.username}
+                            value={authUsername}
+                            className="h-9 text-sm"
+                            onChange={(e) => setAuthUsername(e.target.value)}
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground">
+                          {t.email}
+                        </label>
+                        <Input
+                          type="email"
+                          placeholder={t.email}
+                          value={authEmail}
+                          className="h-9 text-sm"
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground">
+                          {t.password}
+                        </label>
+                        <Input
+                          type="password"
+                          placeholder={t.password}
+                          value={authPassword}
+                          className="h-9 text-sm"
+                          onChange={(e) => setAuthPassword(e.target.value)}
+                        />
+                      </div>
+                      {authError && (
+                        <p className="text-destructive text-xs">{authError}</p>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-full"
+                        disabled={authLoading}
+                        onClick={
+                          authMode === "login" ? handleRagLogin : handleRagRegister
+                        }
+                      >
+                        {authLoading
+                          ? "..."
+                          : authMode === "login"
+                            ? t.login
+                            : t.register}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 状态提示 */}
               <div className="flex items-center gap-2 rounded-lg border p-3">
                 {hasApiKey ? (
                   <>
@@ -351,67 +574,6 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                     </span>
                   </>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* ---- User Tab ---- */}
-          {tab === "user" && (
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <label htmlFor="nickname" className="text-sm font-medium">
-                  {t.nickname}
-                </label>
-                <Input
-                  id="nickname"
-                  type="text"
-                  placeholder={t.nicknamePlaceholder}
-                  value={user.nickname}
-                  className="h-10 text-sm"
-                  onChange={(e) =>
-                    setUser((prev) => ({ ...prev, nickname: e.target.value }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label htmlFor="avatar" className="text-sm font-medium">
-                  {t.avatar}
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
-                    {user.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={user.avatar}
-                        alt="avatar"
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <User className="size-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  <Input
-                    id="avatar"
-                    type="url"
-                    placeholder={t.avatarHint}
-                    value={user.avatar}
-                    className="h-10 flex-1 text-sm"
-                    onChange={(e) =>
-                      setUser((prev) => ({ ...prev, avatar: e.target.value }))
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-dashed p-4">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <User className="size-4 shrink-0" />
-                  <span className="text-sm font-medium">{t.notLoggedIn}</span>
-                </div>
-                <p className="mt-1.5 text-xs text-muted-foreground/70">
-                  {t.loginHint}
-                </p>
               </div>
             </div>
           )}
