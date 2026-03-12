@@ -1,8 +1,13 @@
 /**
  * RAG 知识库管理 API 客户端
+ * 注意：知识库 API 始终使用本地后端 http://127.0.0.1:8080
+ * 不使用 localStorage 中的 baseURL（那是聊天 API 的地址）
  */
 
 import { getStoredRagToken } from "./rag-auth";
+
+/** RAG 后端地址 - 固定为本地后端 */
+const RAG_BACKEND_URL = "http://127.0.0.1:8080";
 
 export type KnowledgeBase = {
   ID: number;
@@ -68,17 +73,12 @@ export type UploadResponse = {
   };
 };
 
-function getBaseUrl(): string {
-  if (typeof window === "undefined") return "http://127.0.0.1:8080";
-  const raw = localStorage.getItem("chat-settings");
-  if (!raw) return "http://127.0.0.1:8080";
-  try {
-    const parsed = JSON.parse(raw) as { baseURL?: string };
-    return parsed.baseURL?.trim() || "http://127.0.0.1:8080";
-  } catch {
-    return "http://127.0.0.1:8080";
-  }
-}
+// 错误码定义
+export const ErrorCodes = {
+  DOC_DUPLICATE: 30016, // 文档已存在
+  FILE_TOO_LARGE: 30010, // 文件过大
+  FILE_TYPE_INVALID: 30003, // 文件类型不支持
+} as const;
 
 function getAuthHeaders(): Record<string, string> {
   const token = getStoredRagToken();
@@ -94,17 +94,26 @@ export async function listKnowledgeBases(
   pageSize = 20,
   keyword = ""
 ): Promise<KbListResponse> {
-  const baseURL = getBaseUrl();
-  const url = new URL(`${baseURL}/api/v1/knowledge-bases`);
+  const url = new URL(`${RAG_BACKEND_URL}/api/v1/knowledge-bases`);
   url.searchParams.set("page", String(page));
   url.searchParams.set("page_size", String(pageSize));
   if (keyword) url.searchParams.set("keyword", keyword);
 
-  const res = await fetch(url.toString(), {
-    method: "GET",
-    headers: getAuthHeaders(),
-  });
-  return res.json();
+  try {
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    return res.json();
+  } catch (e) {
+    if (e instanceof TypeError && e.message === "Failed to fetch") {
+      throw new Error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+    }
+    throw e;
+  }
 }
 
 // 创建知识库
@@ -113,13 +122,22 @@ export async function createKnowledgeBase(
   description = "",
   visibility = 0
 ): Promise<KbCreateResponse> {
-  const baseURL = getBaseUrl();
-  const res = await fetch(`${baseURL}/api/v1/knowledge-bases`, {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ name, description, visibility }),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ name, description, visibility }),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    return res.json();
+  } catch (e) {
+    if (e instanceof TypeError && e.message === "Failed to fetch") {
+      throw new Error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+    }
+    throw e;
+  }
 }
 
 // 更新知识库
@@ -127,8 +145,7 @@ export async function updateKnowledgeBase(
   id: number,
   data: { name?: string; description?: string; visibility?: number }
 ): Promise<{ code: number; message: string; data: KnowledgeBase }> {
-  const baseURL = getBaseUrl();
-  const res = await fetch(`${baseURL}/api/v1/knowledge-bases/${id}`, {
+  const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -140,8 +157,7 @@ export async function updateKnowledgeBase(
 export async function deleteKnowledgeBase(
   id: number
 ): Promise<{ code: number; message: string }> {
-  const baseURL = getBaseUrl();
-  const res = await fetch(`${baseURL}/api/v1/knowledge-bases/${id}`, {
+  const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
@@ -154,8 +170,7 @@ export async function listDocuments(
   page = 1,
   pageSize = 20
 ): Promise<DocListResponse> {
-  const baseURL = getBaseUrl();
-  const url = new URL(`${baseURL}/api/v1/knowledge-bases/${kbId}/documents`);
+  const url = new URL(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents`);
   url.searchParams.set("page", String(page));
   url.searchParams.set("page_size", String(pageSize));
 
@@ -171,14 +186,13 @@ export async function uploadDocuments(
   kbId: number,
   files: File[]
 ): Promise<UploadResponse> {
-  const baseURL = getBaseUrl();
   const token = getStoredRagToken();
   const formData = new FormData();
   files.forEach((file) => {
     formData.append("files", file);
   });
 
-  const res = await fetch(`${baseURL}/api/v1/knowledge-bases/${kbId}/documents`, {
+  const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents`, {
     method: "POST",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,
@@ -191,9 +205,8 @@ export async function deleteDocument(
   kbId: number,
   docId: number
 ): Promise<{ code: number; message: string }> {
-  const baseURL = getBaseUrl();
   const res = await fetch(
-    `${baseURL}/api/v1/knowledge-bases/${kbId}/documents/${docId}`,
+    `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents/${docId}`,
     {
       method: "DELETE",
       headers: getAuthHeaders(),
@@ -207,9 +220,8 @@ export async function reprocessDocument(
   kbId: number,
   docId: number
 ): Promise<{ code: number; message: string }> {
-  const baseURL = getBaseUrl();
   const res = await fetch(
-    `${baseURL}/api/v1/knowledge-bases/${kbId}/documents/${docId}/reprocess`,
+    `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents/${docId}/reprocess`,
     {
       method: "POST",
       headers: getAuthHeaders(),

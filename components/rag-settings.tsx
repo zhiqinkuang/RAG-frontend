@@ -15,6 +15,8 @@ import {
   ChevronDown,
   Loader2,
   CheckCircle,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,7 @@ import {
   formatFileSize,
   getDocStatusText,
   getDocStatusColor,
+  ErrorCodes,
 } from "@/lib/rag-kb";
 import { getStoredRagToken, getStoredRagUser } from "@/lib/rag-auth";
 import { useI18n } from "@/lib/i18n";
@@ -77,6 +80,28 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     return () => window.removeEventListener("rag-auth-changed", checkAuth);
   }, []);
 
+  // 组件加载时测试连接
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    
+    // 测试后端连接
+    const testConnection = async () => {
+      try {
+        const res = await listKnowledgeBases(1, 1);
+        if (res.code === 10002 || res.message?.includes("token") || res.message?.includes("Token")) {
+          // Token 无效，清除登录状态
+          console.log("Token invalid, clearing auth");
+          setIsLoggedIn(false);
+        }
+      } catch (e) {
+        // 连接失败，但不影响 UI 显示
+        console.error("Connection test failed:", e);
+      }
+    };
+    
+    testConnection();
+  }, [isLoggedIn]);
+
   // 加载知识库列表
   const loadKnowledgeBases = useCallback(async () => {
     if (!isLoggedIn) return;
@@ -85,11 +110,20 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
       const res = await listKnowledgeBases(1, 100);
       if (res.code === 0) {
         setKnowledgeBases(res.data.knowledge_bases || []);
+      } else if (res.code === 10002 || res.message?.includes("token")) {
+        // Token 无效或过期，清除登录状态
+        toast.error("登录已过期，请重新登录");
+        setIsLoggedIn(false);
       } else {
         toast.error(res.message || "加载知识库失败");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "网络错误");
+      const msg = e instanceof Error ? e.message : "网络错误";
+      if (msg.includes("无法连接") || msg.includes("Failed to fetch")) {
+        toast.error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -185,19 +219,36 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
       const res = await uploadDocuments(expandedKb, uploadFiles);
       if (res.code === 0) {
         const docs = res.data.documents || [];
-        const successCount = docs.filter(d => d.status !== "error").length;
+        const successDocs = docs.filter(d => d.status !== "error");
         const failedDocs = docs.filter(d => d.status === "error");
         
+        // 详细反馈每个文件的状态
         if (failedDocs.length === 0) {
-          toast.success(`成功上传 ${successCount} 个文件`);
+          toast.success(`成功上传 ${successDocs.length} 个文件`);
         } else {
-          toast.warning(`上传完成：${successCount} 个成功，${failedDocs.length} 个失败`);
+          // 显示失败原因
+          const errorMessages = failedDocs.map(d => `${d.file_name}: ${d.error || "未知错误"}`).join("\n");
+          if (successDocs.length > 0) {
+            toast.warning(`上传完成：${successDocs.length} 个成功，${failedDocs.length} 个失败\n${errorMessages}`, { duration: 5000 });
+          } else {
+            toast.error(`上传失败：\n${errorMessages}`, { duration: 5000 });
+          }
         }
         
         setUploadFiles([]);
         loadDocuments(expandedKb);
+        loadKnowledgeBases(); // 刷新知识库列表以更新 doc_count
       } else {
-        toast.error(res.message || "上传失败");
+        // 根据错误码处理
+        if (res.code === ErrorCodes.DOC_DUPLICATE) {
+          toast.warning(res.message, { duration: 4000 });
+        } else if (res.code === ErrorCodes.FILE_TOO_LARGE) {
+          toast.error("文件大小超过限制（最大 20MB）");
+        } else if (res.code === ErrorCodes.FILE_TYPE_INVALID) {
+          toast.error("不支持的文件类型，仅支持 PDF、TXT、MD、DOCX");
+        } else {
+          toast.error(res.message || "上传失败");
+        }
       }
     } catch (e) {
       console.error("上传失败:", e);

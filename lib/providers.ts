@@ -24,7 +24,7 @@ export const PROVIDERS: ProviderConfig[] = [
     name: "OpenAI",
     baseURL: "https://api.openai.com/v1",
     defaultModel: "gpt-4o-mini",
-    placeholder: "gpt-4o-mini / gpt-4o",
+    placeholder: "GPT-4o-mini / GPT-4o",
   },
   {
     id: "doubao",
@@ -65,7 +65,7 @@ export const PROVIDERS: ProviderConfig[] = [
     id: "rag",
     name: "RAG 知识库",
     baseURL: "http://127.0.0.1:8080",
-    defaultModel: "gpt-4o",
+    defaultModel: "ep-20260303160518-fzrwg",
     placeholder: "http://127.0.0.1:8080",
   },
   {

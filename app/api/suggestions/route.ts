@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     }
 
     const body: Record<string, unknown> = {
-      model: effectiveModel || "gpt-4o-mini",
+      model: effectiveModel || "ep-20260303160518-fzrwg",
       messages: [
         { role: "system", content: systemPrompt },
         ...trimmed,

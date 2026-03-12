@@ -71,6 +71,7 @@ const translations = {
     // Suggestions
     suggestionsTitle: "你可能想问",
     // RAG
+    knowledgeBase: "知识库",
     knowledgeBaseId: "知识库 ID",
     knowledgeBaseIdPlaceholder: "可选，留空则不指定",
     ragApiHint: "Base URL 为 RAG 后端地址；API Key 为登录后获得的 Token。",
@@ -90,6 +91,15 @@ const translations = {
     ragAccount: "RAG 账号",
     ragBaseUrlRequired: "请先在 API 中填写 Base URL",
     passwordMinLength: "密码至少 6 位",
+    // Validation errors
+    invalidEmail: "邮箱格式不正确",
+    invalidPassword: "密码至少 8 位，包含大小写字母和数字",
+    invalidUsername: "用户名为 3-20 位字母、数字或下划线",
+    passwordRequired: "请输入密码",
+    loginFailed: "登录失败，请检查邮箱和密码",
+    networkError: "网络错误，请检查连接",
+    pleaseWait: "请等待 {seconds} 秒",
+    loginSuccess: "登录成功",
   },
   en: {
     settings: "Settings",
@@ -155,6 +165,7 @@ const translations = {
     // Suggestions
     suggestionsTitle: "You might want to ask",
     // RAG
+    knowledgeBase: "Knowledge Base",
     knowledgeBaseId: "Knowledge Base ID",
     knowledgeBaseIdPlaceholder: "Optional, leave empty to not specify",
     ragApiHint: "Base URL is your RAG backend; API Key is the token from login.",
@@ -174,6 +185,15 @@ const translations = {
     ragAccount: "RAG Account",
     ragBaseUrlRequired: "Please set Base URL in API tab first",
     passwordMinLength: "Password must be at least 6 characters",
+    // Validation errors
+    invalidEmail: "Invalid email format",
+    invalidPassword: "Password must be at least 8 characters with uppercase, lowercase and number",
+    invalidUsername: "Username must be 3-20 characters (letters, numbers, underscores)",
+    passwordRequired: "Password is required",
+    loginFailed: "Login failed, please check your email and password",
+    networkError: "Network error, please check your connection",
+    pleaseWait: "Please wait {seconds}s",
+    loginSuccess: "Login successful",
   },
 } as const;
 

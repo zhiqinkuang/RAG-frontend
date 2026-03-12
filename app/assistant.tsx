@@ -217,8 +217,13 @@ export const Assistant = () => {
   const refreshDisplayModel = useCallback(() => {
     const s = getSettings();
     const prov = getProvider(s.provider);
-    setDisplayModel(s.model || prov.defaultModel || t.notConfigured);
-  }, [getSettings, t.notConfigured]);
+    // RAG 模式显示 "知识库"，其他模式显示模型名称
+    if (s.provider === "rag") {
+      setDisplayModel(t.knowledgeBase || "知识库");
+    } else {
+      setDisplayModel(s.model || prov.defaultModel || t.notConfigured);
+    }
+  }, [getSettings, t.notConfigured, t.knowledgeBase]);
 
   useEffect(() => {
     refreshDisplayModel();

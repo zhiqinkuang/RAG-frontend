@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,22 +12,23 @@ import {
   validateEmail,
   validatePassword,
   validateUsername,
-  validateURL,
-  type ValidationResult,
   type PasswordStrength,
 } from "@/lib/validation";
 
 const STORAGE_KEY = "chat-settings";
 
+/** 默认 RAG 后端地址 */
+const DEFAULT_RAG_BASE_URL = "http://127.0.0.1:8080";
+
 /** 密码强度指示器组件 */
-function PasswordStrengthIndicator({ strength }: { strength: PasswordStrength }) {
+function PasswordStrengthIndicator({ strength, t }: { strength: PasswordStrength; t: Record<string, string> }) {
   if (strength.score === 0 && !strength.valid) return null;
 
   const getStrengthLabel = (score: number): string => {
-    if (score <= 1) return "Weak";
-    if (score <= 2) return "Fair";
-    if (score <= 3) return "Good";
-    return "Strong";
+    if (score <= 1) return t.lang === "en" ? "Weak" : "弱";
+    if (score <= 2) return t.lang === "en" ? "Fair" : "一般";
+    if (score <= 3) return t.lang === "en" ? "Good" : "良好";
+    return t.lang === "en" ? "Strong" : "强";
   };
 
   const getStrengthColor = (score: number): string => {
@@ -57,31 +58,13 @@ function PasswordStrengthIndicator({ strength }: { strength: PasswordStrength })
           ))}
         </ul>
       )}
-      {strength.warnings.length > 0 && (
-        <ul className="text-xs text-yellow-600 space-y-0.5">
-          {strength.warnings.map((warning, i) => (
-            <li key={i}>• {warning}</li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }
 
 export default function RegisterPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
-  const [baseURL, setBaseURL] = useState(() => {
-    if (typeof window === "undefined") return getProvider("rag").baseURL;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const p = JSON.parse(raw) as { baseURL?: string; provider?: string };
-        if (p.provider === "rag" && p.baseURL) return p.baseURL;
-      }
-    } catch {}
-    return getProvider("rag").baseURL;
-  });
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -91,7 +74,6 @@ export default function RegisterPage() {
   // 验证状态
   const [usernameError, setUsernameError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [baseURLError, setBaseURLError] = useState<string | null>(null);
   const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({
     valid: false,
     score: 0,
@@ -105,9 +87,9 @@ export default function RegisterPage() {
       setUsernameError(null);
       return;
     }
-    const result: ValidationResult = validateUsername(value);
-    setUsernameError(result.valid ? null : result.error || null);
-  }, []);
+    const result = validateUsername(value);
+    setUsernameError(result.valid ? null : t.invalidUsername);
+  }, [t.invalidUsername]);
 
   // 实时验证邮箱
   const validateEmailField = useCallback((value: string) => {
@@ -115,19 +97,9 @@ export default function RegisterPage() {
       setEmailError(null);
       return;
     }
-    const result: ValidationResult = validateEmail(value);
-    setEmailError(result.valid ? null : result.error || null);
-  }, []);
-
-  // 实时验证 Base URL
-  const validateBaseURLField = useCallback((value: string) => {
-    if (value.trim() === "") {
-      setBaseURLError("Base URL is required");
-      return;
-    }
-    const result = validateURL(value, { allowLocalhost: true });
-    setBaseURLError(result.valid ? null : result.error || null);
-  }, []);
+    const result = validateEmail(value);
+    setEmailError(result.valid ? null : t.invalidEmail);
+  }, [t.invalidEmail]);
 
   // 实时验证密码强度
   const validatePasswordField = useCallback((value: string) => {
@@ -139,50 +111,43 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    // 验证 Base URL
-    const baseURLResult = validateURL(baseURL.trim(), { allowLocalhost: true });
-    if (!baseURLResult.valid) {
-      setError(baseURLResult.error || "Invalid Base URL");
-      return;
-    }
-
     // 验证用户名
     const usernameResult = validateUsername(username);
     if (!usernameResult.valid) {
-      setError(usernameResult.error || "Invalid username");
+      setError(t.invalidUsername);
       return;
     }
 
     // 验证邮箱
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
-      setError(emailResult.error || "Invalid email");
+      setError(t.invalidEmail);
       return;
     }
 
     // 验证密码强度
     const passwordResult = validatePassword(password);
     if (!passwordResult.valid) {
-      setError(passwordResult.errors[0] || "Invalid password");
+      setError(t.invalidPassword);
       return;
     }
 
     setLoading(true);
     try {
-      await ragRegister(baseURL.trim(), username.trim(), email.trim().toLowerCase(), password);
-      const res = await ragLogin(baseURL.trim(), email.trim().toLowerCase(), password);
+      await ragRegister(DEFAULT_RAG_BASE_URL, username.trim(), email.trim().toLowerCase(), password);
+      const res = await ragLogin(DEFAULT_RAG_BASE_URL, email.trim().toLowerCase(), password);
       setStoredRagAuth(res.token, res.user);
       const settings = {
         provider: "rag",
         apiKey: res.token,
-        baseURL: baseURL.trim(),
+        baseURL: DEFAULT_RAG_BASE_URL,
         model: getProvider("rag").defaultModel,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
       router.push("/");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Register failed");
+      setError(err instanceof Error ? err.message : (lang === "zh" ? "注册失败" : "Register failed"));
     } finally {
       setLoading(false);
     }
@@ -196,30 +161,6 @@ export default function RegisterPage() {
           <p className="mt-1 text-muted-foreground text-sm">{t.ragAccount}</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="baseURL" className="text-sm font-medium">
-              Base URL
-            </label>
-            <Input
-              id="baseURL"
-              type="url"
-              placeholder="http://127.0.0.1:8080"
-              value={baseURL}
-              onChange={(e) => {
-                setBaseURL(e.target.value);
-                validateBaseURLField(e.target.value);
-              }}
-              onBlur={() => validateBaseURLField(baseURL)}
-              className={`h-10 ${baseURLError ? "border-destructive" : ""}`}
-              aria-invalid={!!baseURLError}
-              aria-describedby={baseURLError ? "baseURL-error" : undefined}
-            />
-            {baseURLError && (
-              <p id="baseURL-error" className="text-destructive text-xs">
-                {baseURLError}
-              </p>
-            )}
-          </div>
           <div className="space-y-2">
             <label htmlFor="username" className="text-sm font-medium">
               {t.username}
@@ -245,7 +186,7 @@ export default function RegisterPage() {
               </p>
             ) : (
               <p className="text-muted-foreground text-xs">
-                3-20 characters, letters, numbers, and underscores only
+                {lang === "zh" ? "3-20 位字母、数字或下划线" : "3-20 characters, letters, numbers, and underscores only"}
               </p>
             )}
           </div>
@@ -290,7 +231,7 @@ export default function RegisterPage() {
               className={`h-10 ${passwordStrength.errors.length > 0 && password ? "border-destructive" : ""}`}
               required
             />
-            {password && <PasswordStrengthIndicator strength={passwordStrength} />}
+            {password && <PasswordStrengthIndicator strength={passwordStrength} t={{ lang }} />}
           </div>
           {error && (
             <p className="text-destructive text-sm" role="alert">
@@ -307,6 +248,7 @@ export default function RegisterPage() {
           </Button>
         </form>
         <p className="text-center text-muted-foreground text-sm">
+          {lang === "zh" ? "已有账号？" : "Already have an account?"}{" "}
           <Link href="/login" className="text-primary underline underline-offset-2">
             {t.login}
           </Link>

@@ -221,7 +221,7 @@ async function streamChat(
   const url = baseURL.replace(/\/$/, "") + "/chat/completions";
   const openAIMessages = toOpenAIMessages(messages, system);
   const body = {
-    model: model || "gpt-4o-mini",
+    model: model || "doubao-seed-2-0-lite-260215",
     messages: openAIMessages,
     stream: true,
   };
@@ -445,7 +445,7 @@ export async function POST(req: Request) {
         headers["Authorization"] = `Bearer ${effectiveApiKey}`;
       }
       const body: Record<string, unknown> = {
-        model: effectiveModel || "gpt-4o",
+        model: effectiveModel || "ep-20260303160518-fzrwg",
         messages: toRagMessages(messages),
       };
       if (system) body.system = system;

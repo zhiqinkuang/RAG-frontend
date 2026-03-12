@@ -8,33 +8,19 @@ import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { ragLogin, setStoredRagAuth } from "@/lib/rag-auth";
 import { getProvider } from "@/lib/providers";
-import {
-  validateEmail,
-  validatePassword,
-  validateURL,
-  type ValidationResult,
-  type PasswordStrength,
-} from "@/lib/validation";
+import { validateEmail } from "@/lib/validation";
 
 const STORAGE_KEY = "chat-settings";
 
 /** 防暴力破解：登录失败后禁用时间（毫秒） */
 const LOCKOUT_DURATION = 3000;
 
+/** 默认 RAG 后端地址 */
+const DEFAULT_RAG_BASE_URL = "http://127.0.0.1:8080";
+
 export default function LoginPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const [baseURL, setBaseURL] = useState(() => {
-    if (typeof window === "undefined") return getProvider("rag").baseURL;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const p = JSON.parse(raw) as { baseURL?: string; provider?: string };
-        if (p.provider === "rag" && p.baseURL) return p.baseURL;
-      }
-    } catch {}
-    return getProvider("rag").baseURL;
-  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -42,7 +28,6 @@ export default function LoginPage() {
   
   // 验证状态
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [baseURLError, setBaseURLError] = useState<string | null>(null);
   
   // 防暴力破解状态
   const [isLocked, setIsLocked] = useState(false);
@@ -54,19 +39,9 @@ export default function LoginPage() {
       setEmailError(null);
       return;
     }
-    const result: ValidationResult = validateEmail(value);
-    setEmailError(result.valid ? null : result.error || null);
-  }, []);
-
-  // 实时验证 Base URL
-  const validateBaseURLField = useCallback((value: string) => {
-    if (value.trim() === "") {
-      setBaseURLError("Base URL is required");
-      return;
-    }
-    const result = validateURL(value, { allowLocalhost: true });
-    setBaseURLError(result.valid ? null : result.error || null);
-  }, []);
+    const result = validateEmail(value);
+    setEmailError(result.valid ? null : t.invalidEmail);
+  }, [t.invalidEmail]);
 
   // 防暴力破解倒计时
   useEffect(() => {
@@ -90,34 +65,27 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    // 验证 Base URL
-    const baseURLResult = validateURL(baseURL.trim(), { allowLocalhost: true });
-    if (!baseURLResult.valid) {
-      setError(baseURLResult.error || "Invalid Base URL");
-      return;
-    }
-
     // 验证邮箱
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
-      setError(emailResult.error || "Invalid email");
+      setError(t.invalidEmail);
       return;
     }
 
     // 验证密码非空
     if (!password) {
-      setError("Password is required");
+      setError(t.passwordRequired);
       return;
     }
 
     setLoading(true);
     try {
-      const res = await ragLogin(baseURL.trim(), email.trim().toLowerCase(), password);
+      const res = await ragLogin(DEFAULT_RAG_BASE_URL, email.trim().toLowerCase(), password);
       setStoredRagAuth(res.token, res.user);
       const settings = {
         provider: "rag",
         apiKey: res.token,
-        baseURL: baseURL.trim(),
+        baseURL: DEFAULT_RAG_BASE_URL,
         model: getProvider("rag").defaultModel,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -128,7 +96,7 @@ export default function LoginPage() {
     } catch (err) {
       // 登录失败，触发防暴力破解锁定
       triggerLockout();
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t.loginFailed);
     } finally {
       setLoading(false);
     }
@@ -142,30 +110,6 @@ export default function LoginPage() {
           <p className="mt-1 text-muted-foreground text-sm">{t.ragAccount}</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="baseURL" className="text-sm font-medium">
-              Base URL
-            </label>
-            <Input
-              id="baseURL"
-              type="url"
-              placeholder="http://127.0.0.1:8080"
-              value={baseURL}
-              onChange={(e) => {
-                setBaseURL(e.target.value);
-                validateBaseURLField(e.target.value);
-              }}
-              onBlur={() => validateBaseURLField(baseURL)}
-              className={`h-10 ${baseURLError ? "border-destructive" : ""}`}
-              aria-invalid={!!baseURLError}
-              aria-describedby={baseURLError ? "baseURL-error" : undefined}
-            />
-            {baseURLError && (
-              <p id="baseURL-error" className="text-destructive text-xs">
-                {baseURLError}
-              </p>
-            )}
-          </div>
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               {t.email}
@@ -217,7 +161,7 @@ export default function LoginPage() {
             aria-disabled={loading || isLocked}
           >
             {isLocked
-              ? `Please wait ${lockoutCountdown}s`
+              ? t.pleaseWait.replace("{seconds}", String(lockoutCountdown))
               : loading
                 ? "..."
                 : t.login}
