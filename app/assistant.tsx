@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import {
   AssistantRuntimeProvider,
   useAui,
@@ -28,7 +29,7 @@ import { getProvider } from "@/lib/providers";
 import { QueueContext, useQueue, type QueueItem } from "@/lib/queue-context";
 import type { Attachment } from "@assistant-ui/react";
 import { customAttachmentAdapter } from "@/lib/attachment-adapter";
-import { LocalStorageThreadListAdapter } from "@/lib/local-thread-list-adapter";
+import { LocalStorageThreadListAdapter, setOnThreadDeletedCallback } from "@/lib/local-thread-list-adapter";
 import { createThreadHistoryAdapter } from "@/lib/message-store";
 
 type SendMessagesOptions = Parameters<AssistantChatTransport<UIMessage>["sendMessages"]>[0];
@@ -38,7 +39,17 @@ class CustomChatTransport extends AssistantChatTransport<UIMessage> {
   private getSettings: () => ApiKeySettings;
 
   constructor(options: { api: string; getSettings: () => ApiKeySettings }) {
-    super(options);
+    super({
+      ...options,
+      // 自定义 fetch 禁用缓冲
+      fetch: (url, init) => {
+        return fetch(url, {
+          ...init,
+          // @ts-expect-error - 非标准属性，用于禁用浏览器缓冲
+          cache: "no-store",
+        });
+      },
+    });
     this.getSettings = options.getSettings;
   }
 
@@ -146,6 +157,35 @@ const AutoSendQueue: FC = () => {
   return null;
 };
 
+// 处理删除当前对话后自动切换
+const ThreadDeleteHandler: FC = () => {
+  const aui = useAui();
+  const currentThreadId = useAuiState(({ threadListItem }) => threadListItem.id);
+
+  useEffect(() => {
+    setOnThreadDeletedCallback((deletedId, remainingThreads) => {
+      // 如果删除的是当前对话
+      if (deletedId === currentThreadId) {
+        toast.success("对话已删除");
+        // 切换到最近的对话或创建新对话
+        if (remainingThreads.length > 0) {
+          const latestThread = remainingThreads[0];
+          aui.threadList().switchToThread(latestThread.remoteId);
+        } else {
+          // 没有其他对话，创建新对话
+          aui.threadList().newThread();
+        }
+      }
+    });
+
+    return () => {
+      setOnThreadDeletedCallback(null);
+    };
+  }, [aui, currentThreadId]);
+
+  return null;
+};
+
 class RuntimeErrorBoundary extends Component<
   { children: ReactNode },
   { hasError: boolean; key: number }
@@ -219,6 +259,7 @@ export const Assistant = () => {
       <RuntimeErrorBoundary>
         <AssistantRuntimeProvider runtime={runtime}>
           <AutoSendQueue />
+          <ThreadDeleteHandler />
           <SidebarProvider>
             <div className="flex h-dvh w-full pr-0.5">
               <ThreadListSidebar />
@@ -226,17 +267,12 @@ export const Assistant = () => {
                 <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
                   <SidebarTrigger />
                   <Separator orientation="vertical" className="mr-2 h-4" />
-                  <div className="flex flex-1 items-center justify-between">
-                    <h1 className="text-sm font-medium">
-                      {t.chat}{" "}
-                      <span className="font-normal text-muted-foreground">
-                        · {displayModel}
-                      </span>
-                    </h1>
-                    <div className="flex items-center gap-1">
-                      <SettingsDialog onSaved={refreshDisplayModel} />
-                    </div>
-                  </div>
+                  <h1 className="text-sm font-medium">
+                    {t.chat}{" "}
+                    <span className="font-normal text-muted-foreground">
+                      · {displayModel}
+                    </span>
+                  </h1>
                 </header>
                 <div className="flex-1 overflow-hidden">
                   <Thread />

@@ -642,6 +642,7 @@ export function useApiKey() {
           apiKey: parsed.apiKey ?? "",
           baseURL: parsed.baseURL ?? prov.baseURL,
           model: parsed.model ?? prov.defaultModel,
+          knowledgeBaseId: parsed.knowledgeBaseId,
         };
       } catch {
         return { ...defaultSettings };

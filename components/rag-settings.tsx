@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import {
   Database,
   Upload,
@@ -13,9 +14,7 @@ import {
   ChevronRight,
   ChevronDown,
   Loader2,
-  AlertCircle,
   CheckCircle,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +45,6 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // 创建知识库
   const [showCreateKb, setShowCreateKb] = useState(false);
@@ -83,16 +81,15 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   const loadKnowledgeBases = useCallback(async () => {
     if (!isLoggedIn) return;
     setLoading(true);
-    setError(null);
     try {
       const res = await listKnowledgeBases(1, 100);
       if (res.code === 0) {
         setKnowledgeBases(res.data.knowledge_bases || []);
       } else {
-        setError(res.message || "加载失败");
+        toast.error(res.message || "加载知识库失败");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "网络错误");
+      toast.error(e instanceof Error ? e.message : "网络错误");
     } finally {
       setLoading(false);
     }
@@ -135,15 +132,16 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     try {
       const res = await createKnowledgeBase(newKbName.trim(), newKbDesc.trim());
       if (res.code === 0) {
+        toast.success("知识库创建成功");
         setShowCreateKb(false);
         setNewKbName("");
         setNewKbDesc("");
         loadKnowledgeBases();
       } else {
-        setError(res.message || "创建失败");
+        toast.error(res.message || "创建失败");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "网络错误");
+      toast.error(e instanceof Error ? e.message : "网络错误");
     } finally {
       setCreating(false);
     }
@@ -155,14 +153,15 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     try {
       const res = await deleteKnowledgeBase(kbId);
       if (res.code === 0) {
+        toast.success("知识库删除成功");
         loadKnowledgeBases();
         if (expandedKb === kbId) setExpandedKb(null);
         if (selectedKbId === kbId) onKnowledgeBaseChange?.(undefined);
       } else {
-        setError(res.message || "删除失败");
+        toast.error(res.message || "删除失败");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "网络错误");
+      toast.error(e instanceof Error ? e.message : "网络错误");
     }
   };
 
@@ -185,13 +184,24 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     try {
       const res = await uploadDocuments(expandedKb, uploadFiles);
       if (res.code === 0) {
+        const docs = res.data.documents || [];
+        const successCount = docs.filter(d => d.status !== "error").length;
+        const failedDocs = docs.filter(d => d.status === "error");
+        
+        if (failedDocs.length === 0) {
+          toast.success(`成功上传 ${successCount} 个文件`);
+        } else {
+          toast.warning(`上传完成：${successCount} 个成功，${failedDocs.length} 个失败`);
+        }
+        
         setUploadFiles([]);
         loadDocuments(expandedKb);
       } else {
-        setError(res.message || "上传失败");
+        toast.error(res.message || "上传失败");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "网络错误");
+      console.error("上传失败:", e);
+      toast.error(e instanceof Error ? e.message : "网络错误");
     } finally {
       setUploading(false);
     }
@@ -204,12 +214,13 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     try {
       const res = await deleteDocument(expandedKb, docId);
       if (res.code === 0) {
+        toast.success("文档删除成功");
         loadDocuments(expandedKb);
       } else {
-        setError(res.message || "删除失败");
+        toast.error(res.message || "删除失败");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "网络错误");
+      toast.error(e instanceof Error ? e.message : "网络错误");
     }
   };
 
@@ -219,12 +230,13 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     try {
       const res = await reprocessDocument(expandedKb, docId);
       if (res.code === 0) {
+        toast.success("已开始重新处理文档");
         loadDocuments(expandedKb);
       } else {
-        setError(res.message || "重新处理失败");
+        toast.error(res.message || "重新处理失败");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "网络错误");
+      toast.error(e instanceof Error ? e.message : "网络错误");
     }
   };
 
@@ -246,21 +258,6 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
 
   return (
     <div className="space-y-4">
-      {/* 错误提示 */}
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950 dark:text-red-400">
-          <AlertCircle className="size-4 shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button
-            type="button"
-            onClick={() => setError(null)}
-            className="shrink-0 hover:text-red-800 dark:hover:text-red-200"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-      )}
-
       {/* 工具栏 */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">知识库管理</h3>

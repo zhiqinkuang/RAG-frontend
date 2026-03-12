@@ -202,6 +202,7 @@ const FollowUpSuggestions: FC = () => {
           apiKey: settings.apiKey,
           baseURL: settings.baseURL,
           model: settings.model,
+          knowledgeBaseId: settings.knowledgeBaseId,
         }),
         signal: controller.signal,
       })

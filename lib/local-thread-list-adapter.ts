@@ -16,6 +16,14 @@ export type StoredThread = {
   createdAt: number;
 };
 
+// 回调函数类型
+type OnThreadDeletedCallback = (deletedId: string, remainingThreads: StoredThread[]) => void;
+let onThreadDeletedCallback: OnThreadDeletedCallback | null = null;
+
+export function setOnThreadDeletedCallback(cb: OnThreadDeletedCallback | null) {
+  onThreadDeletedCallback = cb;
+}
+
 function readThreads(): StoredThread[] {
   if (typeof window === "undefined") return [];
   try {
@@ -86,13 +94,18 @@ export class LocalStorageThreadListAdapter {
   }
 
   async delete(remoteId: string) {
-    const threads = readThreads().filter((t) => t.remoteId !== remoteId);
-    writeThreads(threads);
+    const threads = readThreads();
+    const remainingThreads = threads.filter((t) => t.remoteId !== remoteId);
+    writeThreads(remainingThreads);
     // Also clean up persisted messages for this thread
     try {
       localStorage.removeItem("chat-messages:" + remoteId);
     } catch {
       // ignore
+    }
+    // 通知删除回调
+    if (onThreadDeletedCallback) {
+      onThreadDeletedCallback(remoteId, remainingThreads);
     }
   }
 

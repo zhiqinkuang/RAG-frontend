@@ -35,12 +35,14 @@ export async function POST(req: Request) {
       apiKey,
       baseURL: requestBaseURL,
       model,
+      knowledgeBaseId,
     }: {
       messages: Array<{ role: string; content: string }>;
       provider?: ProviderId;
       apiKey?: string;
       baseURL?: string;
       model?: string;
+      knowledgeBaseId?: number;
     } = await req.json();
 
     const provider = (providerId ?? "doubao") as ProviderId;
@@ -67,12 +69,17 @@ export async function POST(req: Request) {
       "只返回JSON数组，不要markdown，不要解释。" +
       '使用和用户相同的语言。格式：["问题1","问题2","问题3"]';
 
-    const url =
-      provider === "custom-api"
-        ? effectiveBaseURL
-        : effectiveBaseURL.replace(/\/$/, "") + "/chat/completions";
+    // RAG provider 使用后端的 /v1/chat/completions 接口
+    let url: string;
+    if (provider === "rag") {
+      url = effectiveBaseURL.replace(/\/$/, "") + "/v1/chat/completions";
+    } else if (provider === "custom-api") {
+      url = effectiveBaseURL;
+    } else {
+      url = effectiveBaseURL.replace(/\/$/, "") + "/chat/completions";
+    }
 
-    const body = {
+    const body: Record<string, unknown> = {
       model: effectiveModel || "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
@@ -84,6 +91,11 @@ export async function POST(req: Request) {
       temperature: 0.8,
     };
 
+    // RAG provider 添加 knowledge_base_id
+    if (provider === "rag" && typeof knowledgeBaseId === "number" && knowledgeBaseId > 0) {
+      body.knowledge_base_id = knowledgeBaseId;
+    }
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
@@ -91,7 +103,7 @@ export async function POST(req: Request) {
       headers["Authorization"] = `Bearer ${effectiveApiKey}`;
     }
 
-    const response = await fetch(url!, {
+    const response = await fetch(url, {
       method: "POST",
       headers,
       body: JSON.stringify(body),

@@ -228,14 +228,19 @@ export function formatFileSize(bytes: number): string {
 }
 
 // 文档状态文本
+// 后端定义: 0=Pending, 1=Processing, 2=Completed, 3=Failed
 export function getDocStatusText(status: number): string {
   switch (status) {
     case 0:
-      return "处理中";
+      return "待处理";
     case 1:
+      return "处理中";
+    case 2:
       return "成功";
-    default:
+    case 3:
       return "失败";
+    default:
+      return "未知";
   }
 }
 
@@ -243,10 +248,14 @@ export function getDocStatusText(status: number): string {
 export function getDocStatusColor(status: number): string {
   switch (status) {
     case 0:
-      return "text-yellow-600 dark:text-yellow-400";
+      return "text-gray-600 dark:text-gray-400";
     case 1:
+      return "text-yellow-600 dark:text-yellow-400";
+    case 2:
       return "text-green-600 dark:text-green-400";
-    default:
+    case 3:
       return "text-red-600 dark:text-red-400";
+    default:
+      return "text-gray-600 dark:text-gray-400";
   }
 }

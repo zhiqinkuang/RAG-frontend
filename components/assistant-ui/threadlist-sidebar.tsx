@@ -60,6 +60,9 @@ export function ThreadListSidebar({
   }, []);
 
   const handleLogout = () => {
+    if (!confirm(t.logoutConfirm || "确定要退出登录吗？")) {
+      return;
+    }
     clearStoredRagAuth();
     try {
       const raw = localStorage.getItem(STORAGE_KEY);

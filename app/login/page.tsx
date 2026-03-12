@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,18 @@ import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { ragLogin, setStoredRagAuth } from "@/lib/rag-auth";
 import { getProvider } from "@/lib/providers";
+import {
+  validateEmail,
+  validatePassword,
+  validateURL,
+  type ValidationResult,
+  type PasswordStrength,
+} from "@/lib/validation";
 
 const STORAGE_KEY = "chat-settings";
+
+/** 防暴力破解：登录失败后禁用时间（毫秒） */
+const LOCKOUT_DURATION = 3000;
 
 export default function LoginPage() {
   const { t } = useI18n();
@@ -29,17 +39,80 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // 验证状态
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [baseURLError, setBaseURLError] = useState<string | null>(null);
+  
+  // 防暴力破解状态
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockoutCountdown, setLockoutCountdown] = useState(0);
+
+  // 实时验证邮箱
+  const validateEmailField = useCallback((value: string) => {
+    if (value.trim() === "") {
+      setEmailError(null);
+      return;
+    }
+    const result: ValidationResult = validateEmail(value);
+    setEmailError(result.valid ? null : result.error || null);
+  }, []);
+
+  // 实时验证 Base URL
+  const validateBaseURLField = useCallback((value: string) => {
+    if (value.trim() === "") {
+      setBaseURLError("Base URL is required");
+      return;
+    }
+    const result = validateURL(value, { allowLocalhost: true });
+    setBaseURLError(result.valid ? null : result.error || null);
+  }, []);
+
+  // 防暴力破解倒计时
+  useEffect(() => {
+    if (lockoutCountdown > 0) {
+      const timer = setTimeout(() => {
+        setLockoutCountdown((prev) => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (isLocked) {
+      setIsLocked(false);
+    }
+  }, [lockoutCountdown, isLocked]);
+
+  // 触发锁定
+  const triggerLockout = useCallback(() => {
+    setIsLocked(true);
+    setLockoutCountdown(Math.ceil(LOCKOUT_DURATION / 1000));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!baseURL.trim()) {
-      setError(t.ragBaseUrlRequired);
+
+    // 验证 Base URL
+    const baseURLResult = validateURL(baseURL.trim(), { allowLocalhost: true });
+    if (!baseURLResult.valid) {
+      setError(baseURLResult.error || "Invalid Base URL");
       return;
     }
+
+    // 验证邮箱
+    const emailResult = validateEmail(email);
+    if (!emailResult.valid) {
+      setError(emailResult.error || "Invalid email");
+      return;
+    }
+
+    // 验证密码非空
+    if (!password) {
+      setError("Password is required");
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await ragLogin(baseURL.trim(), email.trim(), password);
+      const res = await ragLogin(baseURL.trim(), email.trim().toLowerCase(), password);
       setStoredRagAuth(res.token, res.user);
       const settings = {
         provider: "rag",
@@ -53,6 +126,8 @@ export default function LoginPage() {
       router.push("/");
       router.refresh();
     } catch (err) {
+      // 登录失败，触发防暴力破解锁定
+      triggerLockout();
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
@@ -76,9 +151,20 @@ export default function LoginPage() {
               type="url"
               placeholder="http://127.0.0.1:8080"
               value={baseURL}
-              onChange={(e) => setBaseURL(e.target.value)}
-              className="h-10"
+              onChange={(e) => {
+                setBaseURL(e.target.value);
+                validateBaseURLField(e.target.value);
+              }}
+              onBlur={() => validateBaseURLField(baseURL)}
+              className={`h-10 ${baseURLError ? "border-destructive" : ""}`}
+              aria-invalid={!!baseURLError}
+              aria-describedby={baseURLError ? "baseURL-error" : undefined}
             />
+            {baseURLError && (
+              <p id="baseURL-error" className="text-destructive text-xs">
+                {baseURLError}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
@@ -89,10 +175,21 @@ export default function LoginPage() {
               type="email"
               placeholder={t.email}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-10"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                validateEmailField(e.target.value);
+              }}
+              onBlur={() => validateEmailField(email)}
+              className={`h-10 ${emailError ? "border-destructive" : ""}`}
+              aria-invalid={!!emailError}
+              aria-describedby={emailError ? "email-error" : undefined}
               required
             />
+            {emailError && (
+              <p id="email-error" className="text-destructive text-xs">
+                {emailError}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
@@ -109,10 +206,21 @@ export default function LoginPage() {
             />
           </div>
           {error && (
-            <p className="text-destructive text-sm">{error}</p>
+            <p className="text-destructive text-sm" role="alert">
+              {error}
+            </p>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "..." : t.login}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || isLocked}
+            aria-disabled={loading || isLocked}
+          >
+            {isLocked
+              ? `Please wait ${lockoutCountdown}s`
+              : loading
+                ? "..."
+                : t.login}
           </Button>
         </form>
         <p className="text-center text-muted-foreground text-sm">

@@ -1,3 +1,6 @@
+// 禁用 Next.js 响应缓冲，确保流式传输
+export const dynamic = 'force-dynamic';
+
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
@@ -430,7 +433,7 @@ export async function POST(req: Request) {
       return result.toUIMessageStreamResponse();
     }
 
-    // RAG 知识库：调用后端 POST /api/chat（自定义 UI 消息流）
+    // RAG 知识库：调用后端 POST /api/chat（UI Message Stream 格式）
     if (provider === "rag") {
       const base = effectiveBaseURL?.replace(/\/$/, "") ?? "";
       if (!base) {
@@ -464,12 +467,36 @@ export async function POST(req: Request) {
         );
       }
 
-      return new Response(ensureReadableStream(apiResponse.body), {
+      // 使用 TransformStream 实时转发流数据，避免缓冲
+      const stream = new ReadableStream({
+        async start(controller) {
+          const reader = apiResponse.body?.getReader();
+          if (!reader) {
+            controller.close();
+            return;
+          }
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                controller.close();
+                return;
+              }
+              controller.enqueue(value);
+            }
+          } catch (error) {
+            controller.error(error);
+          }
+        },
+      });
+
+      return new Response(stream, {
         headers: {
           "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-transform",
           "Connection": "keep-alive",
           "x-vercel-ai-ui-message-stream": "v1",
+          "X-Accel-Buffering": "no",
         },
       });
     }
