@@ -32,6 +32,7 @@ import {
   getStoredRagToken,
   setStoredRagAuth,
   clearStoredRagAuth,
+  clearAllChatData,
   ragLogin,
   ragRegister,
 } from "@/lib/rag-auth";
@@ -117,6 +118,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
 
   const handleRagLogout = () => {
     clearStoredRagAuth();
+    // 清除所有聊天缓存数据，防止新用户看到上一个用户的聊天记录
+    clearAllChatData();
     setRagUser(null);
     setSettings((prev) => ({ ...prev, apiKey: "" }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, apiKey: "" }));

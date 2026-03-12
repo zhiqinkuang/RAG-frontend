@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import {
   Database,
@@ -62,6 +62,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   const [documents, setDocuments] = useState<Document[]>([]);
   const [docLoading, setDocLoading] = useState(false);
   const [docTotal, setDocTotal] = useState(0);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // 上传
   const [uploading, setUploading] = useState(false);
@@ -77,7 +78,12 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     };
     checkAuth();
     window.addEventListener("rag-auth-changed", checkAuth);
-    return () => window.removeEventListener("rag-auth-changed", checkAuth);
+    return () => {
+      window.removeEventListener("rag-auth-changed", checkAuth);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
   }, []);
 
   // 组件加载时测试连接
@@ -134,8 +140,8 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   }, [loadKnowledgeBases]);
 
   // 加载文档列表
-  const loadDocuments = useCallback(async (kbId: number) => {
-    setDocLoading(true);
+  const loadDocuments = useCallback(async (kbId: number, silent = false) => {
+    if (!silent) setDocLoading(true);
     try {
       const res = await listDocuments(kbId, 1, 100);
       if (res.code === 0) {
@@ -145,9 +151,29 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     } catch (e) {
       console.error("加载文档失败:", e);
     } finally {
-      setDocLoading(false);
+      if (!silent) setDocLoading(false);
     }
   }, []);
+
+  // 轮询处理中的文档
+  useEffect(() => {
+    // 检查是否有处理中或待处理的文档
+    const hasProcessing = documents.some(d => d.status === 0 || d.status === 1);
+    
+    if (hasProcessing && expandedKb) {
+      // 每 2 秒轮询一次
+      pollingRef.current = setInterval(() => {
+        loadDocuments(expandedKb, true);
+      }, 2000);
+    }
+    
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [documents, expandedKb, loadDocuments]);
 
   // 展开/收起知识库
   const toggleKb = (kbId: number) => {
@@ -549,6 +575,21 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                                 <span>•</span>
                                 <span>{doc.chunk_count} 分块</span>
                               </div>
+                              {/* 进度条 */}
+                              {doc.status === 1 && doc.progress && (
+                                <div className="mt-1">
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-0.5">
+                                    <span>处理中...</span>
+                                    <span>{doc.progress.percent}%</span>
+                                  </div>
+                                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                    <div 
+                                      className="h-full bg-primary transition-all duration-300 rounded-full"
+                                      style={{ width: `${doc.progress.percent}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
                               {doc.error_msg && (
                                 <p className="truncate text-red-500">
                                   {doc.error_msg}

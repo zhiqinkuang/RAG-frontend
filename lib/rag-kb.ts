@@ -21,6 +21,12 @@ export type KnowledgeBase = {
   UpdatedAt: string;
 };
 
+export type DocumentProgress = {
+  total: number;
+  completed: number;
+  percent: number;
+};
+
 export type Document = {
   ID: number;
   knowledge_base_id: number;
@@ -30,8 +36,9 @@ export type Document = {
   file_size: number;
   file_type: string;
   chunk_count: number;
-  status: number; // 0=处理中, 1=成功, 其他=失败
+  status: number; // 0=待处理, 1=处理中, 2=成功, 3=失败
   error_msg: string;
+  progress?: DocumentProgress; // 处理进度
   CreatedAt: string;
   UpdatedAt: string;
 };

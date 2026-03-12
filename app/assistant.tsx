@@ -109,9 +109,9 @@ function useThreadRuntime(options: {
   getSettings: () => ApiKeySettings;
 }) {
   const dynamicTransport = useDynamicChatTransport(options.transport);
-  const id = useAuiState(({ threadListItem }) => threadListItem.id);
+  const id = useAuiState(({ threadListItem }) => threadListItem?.id);
 
-  const historyAdapter = useMemo(() => createThreadHistoryAdapter(id), [id]);
+  const historyAdapter = useMemo(() => id ? createThreadHistoryAdapter(id) : null, [id]);
 
   const chat = useChat({
     id,
@@ -122,7 +122,7 @@ function useThreadRuntime(options: {
   const runtime = useAISDKRuntime(chat, {
     adapters: {
       attachments: customAttachmentAdapter,
-      history: historyAdapter,
+      ...(historyAdapter ? { history: historyAdapter } : {}),
     },
   });
 
@@ -136,7 +136,7 @@ function useThreadRuntime(options: {
 const AutoSendQueue: FC = () => {
   const { items, removeItem } = useQueue();
   const aui = useAui();
-  const isRunning = useAssistantState((s) => s.thread.isRunning);
+  const isRunning = useAssistantState((s) => s.thread?.isRunning ?? false);
   const prevRunning = useRef(false);
 
   useEffect(() => {
@@ -160,9 +160,11 @@ const AutoSendQueue: FC = () => {
 // 处理删除当前对话后自动切换
 const ThreadDeleteHandler: FC = () => {
   const aui = useAui();
-  const currentThreadId = useAuiState(({ threadListItem }) => threadListItem.id);
+  const currentThreadId = useAuiState(({ threadListItem }) => threadListItem?.id);
 
   useEffect(() => {
+    if (!currentThreadId) return;
+    
     setOnThreadDeletedCallback((deletedId, remainingThreads) => {
       // 如果删除的是当前对话
       if (deletedId === currentThreadId) {
@@ -191,19 +193,69 @@ class RuntimeErrorBoundary extends Component<
   { hasError: boolean; key: number }
 > {
   state = { hasError: false, key: 0 };
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    // 只捕获 assistant-ui 的初始化错误
+    if (error.message === "Entry not available in the store") {
+      return { hasError: true };
+    }
+    // 其他错误继续抛出
+    throw error;
   }
   componentDidCatch() {
     setTimeout(() => {
       this.setState((s) => ({ hasError: false, key: s.key + 1 }));
-    }, 0);
+    }, 100);
   }
   render() {
     if (this.state.hasError) return null;
     return <div key={this.state.key}>{this.props.children}</div>;
   }
 }
+
+// 内部组件 - 创建 runtime 并渲染 UI
+const AssistantContent: FC<{
+  transport: AssistantChatTransport<UIMessage>;
+  adapter: LocalStorageThreadListAdapter;
+  getSettings: () => ApiKeySettings;
+  displayModel: string;
+}> = ({ transport, adapter, getSettings, displayModel }) => {
+  const { t } = useI18n();
+  
+  const runtime = unstable_useRemoteThreadListRuntime({
+    runtimeHook: function RuntimeHook() {
+      return useThreadRuntime({ transport, getSettings });
+    },
+    adapter,
+    allowNesting: true,
+  });
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <AutoSendQueue />
+      <ThreadDeleteHandler />
+      <SidebarProvider>
+        <div className="flex h-dvh w-full pr-0.5">
+          <ThreadListSidebar />
+          <SidebarInset>
+            <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+              <SidebarTrigger />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+              <h1 className="text-sm font-medium">
+                {t.chat}{" "}
+                <span className="font-normal text-muted-foreground">
+                  · {displayModel}
+                </span>
+              </h1>
+            </header>
+            <div className="flex-1 overflow-hidden">
+              <Thread />
+            </div>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    </AssistantRuntimeProvider>
+  );
+};
 
 export const Assistant = () => {
   const { getSettings } = useApiKey();
@@ -249,43 +301,17 @@ export const Assistant = () => {
 
   const adapter = useMemo(() => new LocalStorageThreadListAdapter(), []);
 
-  const runtime = unstable_useRemoteThreadListRuntime({
-    runtimeHook: function RuntimeHook() {
-      return useThreadRuntime({ transport, getSettings });
-    },
-    adapter,
-    allowNesting: true,
-  });
-
   return (
     <QueueContext.Provider
       value={{ items: queueItems, addItem: addQueueItem, removeItem: removeQueueItem }}
     >
       <RuntimeErrorBoundary>
-        <AssistantRuntimeProvider runtime={runtime}>
-          <AutoSendQueue />
-          <ThreadDeleteHandler />
-          <SidebarProvider>
-            <div className="flex h-dvh w-full pr-0.5">
-              <ThreadListSidebar />
-              <SidebarInset>
-                <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-                  <SidebarTrigger />
-                  <Separator orientation="vertical" className="mr-2 h-4" />
-                  <h1 className="text-sm font-medium">
-                    {t.chat}{" "}
-                    <span className="font-normal text-muted-foreground">
-                      · {displayModel}
-                    </span>
-                  </h1>
-                </header>
-                <div className="flex-1 overflow-hidden">
-                  <Thread />
-                </div>
-              </SidebarInset>
-            </div>
-          </SidebarProvider>
-        </AssistantRuntimeProvider>
+        <AssistantContent
+          transport={transport}
+          adapter={adapter}
+          getSettings={getSettings}
+          displayModel={displayModel}
+        />
       </RuntimeErrorBoundary>
     </QueueContext.Provider>
   );

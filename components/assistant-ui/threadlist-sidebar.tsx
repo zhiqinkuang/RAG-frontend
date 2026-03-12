@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { useI18n } from "@/lib/i18n";
-import { getStoredRagUser, clearStoredRagAuth } from "@/lib/rag-auth";
+import { getStoredRagUser, clearStoredRagAuth, clearAllChatData } from "@/lib/rag-auth";
 import { SettingsDialog } from "@/components/settings-dialog";
 
 const STORAGE_KEY = "chat-settings";
@@ -63,18 +63,14 @@ export function ThreadListSidebar({
     if (!confirm(t.logoutConfirm || "确定要退出登录吗？")) {
       return;
     }
+    // 清除认证信息
     clearStoredRagAuth();
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const prev = JSON.parse(raw) as { provider?: string; [k: string]: unknown };
-        if (prev.provider === "rag") {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prev, apiKey: "" }));
-        }
-      }
-    } catch {}
-    router.replace("/login");
-    router.refresh();
+    // 清除所有聊天缓存数据，防止新用户看到上一个用户的聊天记录
+    clearAllChatData();
+    // 触发认证状态变化事件
+    window.dispatchEvent(new CustomEvent("rag-auth-changed"));
+    // 强制完全刷新页面，确保清除所有内存状态
+    window.location.href = "/login";
   };
 
   if (!mounted) {

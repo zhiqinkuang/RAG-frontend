@@ -123,6 +123,45 @@ export function clearStoredRagAuth(): void {
 }
 
 /**
+ * 清除所有聊天相关的缓存数据
+ * 用于登出时确保新用户看不到上一个用户的聊天记录
+ */
+export function clearAllChatData(): void {
+  if (typeof window === "undefined") return;
+  
+  // 清除对话列表
+  localStorage.removeItem("chat-threads");
+  
+  // 清除所有对话消息
+  // 遍历 localStorage 找到所有 chat-messages:* 的 key
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("chat-messages:")) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+  
+  // 清除聊天设置中的敏感信息（保留非敏感设置如主题、语言）
+  try {
+    const raw = localStorage.getItem("chat-settings");
+    if (raw) {
+      const settings = JSON.parse(raw) as Record<string, unknown>;
+      // 只保留非敏感设置
+      const safeSettings = {
+        provider: settings.provider,
+        theme: settings.theme,
+        lang: settings.lang,
+      };
+      localStorage.setItem("chat-settings", JSON.stringify(safeSettings));
+    }
+  } catch {
+    // 忽略解析错误
+  }
+}
+
+/**
  * 尝试刷新 Token
  * @param baseURL API 基础 URL
  * @param retries 重试次数
