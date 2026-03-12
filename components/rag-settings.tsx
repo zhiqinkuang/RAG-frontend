@@ -267,6 +267,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
       if (res.code === 0) {
         toast.success("文档删除成功");
         loadDocuments(expandedKb);
+        loadKnowledgeBases(); // 刷新知识库列表以更新 doc_count
       } else {
         toast.error(res.message || "删除失败");
       }
