@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, MessagesSquare, User, Settings } from "lucide-react";
+import { LogOut, MessagesSquare, User, Settings, BookOpen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -120,6 +120,16 @@ export function ThreadListSidebar({
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          {/* 论文搜索入口 */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => router.push("/paper")}
+          >
+            <BookOpen className="size-4" />
+            <span className="text-xs">{t.paperSearch || "论文搜索"}</span>
+          </Button>
         </div>
       </SidebarHeader>
       <SidebarContent className="aui-sidebar-content px-2">

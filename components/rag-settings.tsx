@@ -158,6 +158,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   // 轮询处理中的文档
   useEffect(() => {
     // 检查是否有处理中或待处理的文档
+    // 注意：进度100%但状态仍为1时也需要继续轮询，直到后端状态更新为2
     const hasProcessing = documents.some(d => d.status === 0 || d.status === 1);
     
     if (hasProcessing && expandedKb) {
@@ -321,6 +322,18 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   // 选择知识库
   const handleSelectKb = (kbId: number) => {
     onKnowledgeBaseChange?.(kbId);
+    // 自动保存设置到 localStorage
+    const raw = localStorage.getItem("chat-settings");
+    let settings = {};
+    try {
+      settings = raw ? JSON.parse(raw) : {};
+    } catch {
+      settings = {};
+    }
+    localStorage.setItem("chat-settings", JSON.stringify({ ...settings, knowledgeBaseId: kbId }));
+    // 触发事件通知其他组件
+    window.dispatchEvent(new CustomEvent("settings-changed"));
+    toast.success(`已选择知识库 (ID: ${kbId})`);
   };
 
   if (!isLoggedIn) {
@@ -566,8 +579,8 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                                 <span className="truncate font-medium">
                                   {doc.file_name}
                                 </span>
-                                <span className={getDocStatusColor(doc.status)}>
-                                  {getDocStatusText(doc.status)}
+                                <span className={getDocStatusColor(doc.status, doc.progress?.percent)}>
+                                  {getDocStatusText(doc.status, doc.progress?.percent)}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 text-muted-foreground">
@@ -575,17 +588,17 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                                 <span>•</span>
                                 <span>{doc.chunk_count} 分块</span>
                               </div>
-                              {/* 进度条 */}
-                              {doc.status === 1 && doc.progress && (
+                              {/* 进度条 - 仅在处理中(status=1)且进度未达100%时显示 */}
+                              {doc.status === 1 && doc.progress && doc.progress.percent < 100 && (
                                 <div className="mt-1">
                                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-0.5">
-                                    <span>处理中...</span>
+                                    <span>处理中</span>
                                     <span>{doc.progress.percent}%</span>
                                   </div>
                                   <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                                     <div 
                                       className="h-full bg-primary transition-all duration-300 rounded-full"
-                                      style={{ width: `${doc.progress.percent}%` }}
+                                      style={{ width: `${Math.min(doc.progress.percent, 100)}%` }}
                                     />
                                   </div>
                                 </div>

@@ -281,6 +281,17 @@ export const Assistant = () => {
     refreshDisplayModel();
   }, [refreshDisplayModel]);
 
+  // 监听设置变化事件
+  useEffect(() => {
+    const handleSettingsChange = () => {
+      refreshDisplayModel();
+    };
+    window.addEventListener("settings-changed", handleSettingsChange);
+    return () => {
+      window.removeEventListener("settings-changed", handleSettingsChange);
+    };
+  }, [refreshDisplayModel]);
+
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
 
   const addQueueItem = useCallback((text: string, attachments?: Attachment[]) => {
