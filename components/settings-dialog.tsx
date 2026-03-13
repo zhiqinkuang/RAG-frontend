@@ -45,6 +45,8 @@ export interface ApiKeySettings {
   model: string;
   /** RAG 知识库 ID，仅当 provider 为 rag 时使用 */
   knowledgeBaseId?: number;
+  /** 本地下载地址，用于论文备份 */
+  localDownloadPath?: string;
 }
 
 const STORAGE_KEY = "chat-settings";
@@ -54,6 +56,7 @@ const defaultSettings: ApiKeySettings = {
   apiKey: "",
   baseURL: "",
   model: "doubao-seed-2-0-lite-260215",
+  localDownloadPath: "",
 };
 
 type Tab = "general" | "api" | "rag";
@@ -149,6 +152,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
           baseURL: parsed.baseURL ?? prov.baseURL,
           model: parsed.model ?? prov.defaultModel,
           knowledgeBaseId: parsed.knowledgeBaseId,
+          localDownloadPath: parsed.localDownloadPath ?? "",
         });
       } catch {
         setSettings({ ...defaultSettings });
@@ -181,6 +185,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
   const handleSave = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     setSaved(true);
+    // 触发自定义事件通知其他组件设置已更新
+    window.dispatchEvent(new CustomEvent("settings-changed"));
     onSaved?.();
     setTimeout(() => {
       setSaved(false);
@@ -307,6 +313,29 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                   ))}
                 </div>
               </div>
+
+              {/* Local Download Path */}
+              <div className="space-y-2">
+                <label htmlFor="localDownloadPath" className="text-sm font-medium">
+                  {t.localDownloadPath}
+                </label>
+                <Input
+                  id="localDownloadPath"
+                  type="text"
+                  placeholder={t.localDownloadPathHint}
+                  value={settings.localDownloadPath ?? ""}
+                  className="h-10 text-sm"
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      localDownloadPath: e.target.value,
+                    }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t.localDownloadPathHint}
+                </p>
+              </div>
             </div>
           )}
 
@@ -408,8 +437,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                 />
               </div>
 
-              {/* RAG 知识库 ID */}
-              {isRag && (
+              {/* RAG 知识库 ID - 已隐藏，用户在论文搜索页面选择 */}
+              {/* {isRag && (
                 <div className="space-y-2">
                   <label htmlFor="knowledgeBaseId" className="text-sm font-medium">
                     {t.knowledgeBaseId}
@@ -433,7 +462,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                     可在"知识库"标签页管理知识库
                   </p>
                 </div>
-              )}
+              )} */}
 
               {/* RAG 登录区域 */}
               {isRag && (
@@ -646,6 +675,7 @@ export function useApiKey() {
           baseURL: parsed.baseURL ?? prov.baseURL,
           model: parsed.model ?? prov.defaultModel,
           knowledgeBaseId: parsed.knowledgeBaseId,
+          localDownloadPath: parsed.localDownloadPath ?? "",
         };
       } catch {
         return { ...defaultSettings };

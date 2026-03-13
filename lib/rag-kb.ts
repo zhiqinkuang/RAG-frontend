@@ -248,14 +248,20 @@ export function formatFileSize(bytes: number): string {
 
 // 文档状态文本
 // 后端定义: 0=Pending, 1=Processing, 2=Completed, 3=Failed
-export function getDocStatusText(status: number): string {
+// 进度100%时直接显示"已完成"，不显示"处理中"或"等待后端确认"
+export function getDocStatusText(status: number, progressPercent?: number): string {
+  // 进度100%直接显示"已完成"
+  if (progressPercent && progressPercent >= 100) {
+    return "已完成";
+  }
+  
   switch (status) {
     case 0:
       return "待处理";
     case 1:
       return "处理中";
     case 2:
-      return "成功";
+      return "已完成";
     case 3:
       return "失败";
     default:
@@ -264,7 +270,13 @@ export function getDocStatusText(status: number): string {
 }
 
 // 文档状态颜色
-export function getDocStatusColor(status: number): string {
+// 进度100%时直接显示绿色
+export function getDocStatusColor(status: number, progressPercent?: number): string {
+  // 进度100%直接显示绿色
+  if (progressPercent && progressPercent >= 100) {
+    return "text-green-600 dark:text-green-400";
+  }
+  
   switch (status) {
     case 0:
       return "text-gray-600 dark:text-gray-400";

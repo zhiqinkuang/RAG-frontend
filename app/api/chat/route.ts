@@ -439,6 +439,34 @@ export async function POST(req: Request) {
       if (!base) {
         return jsonErrorResponse("请填写 RAG 后端地址 (Base URL)", 400);
       }
+      
+      // 自动获取用户的知识库
+      let kbId = knowledgeBaseId;
+      if (typeof kbId !== "number" || kbId <= 0) {
+        // 从后端获取用户的知识库列表
+        try {
+          const kbListURL = `${base}/api/v1/knowledge-bases?page=1&page_size=1`;
+          const kbHeaders: Record<string, string> = { "Content-Type": "application/json" };
+          if (effectiveApiKey) {
+            kbHeaders["Authorization"] = `Bearer ${effectiveApiKey}`;
+          }
+          const kbResponse = await fetch(kbListURL, { headers: kbHeaders });
+          if (kbResponse.ok) {
+            const kbData = await kbResponse.json();
+            const kbs = kbData?.data?.knowledge_bases || [];
+            if (kbs.length > 0) {
+              kbId = kbs[0].ID;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to auto-fetch knowledge bases:", e);
+        }
+      }
+      
+      if (typeof kbId !== "number" || kbId <= 0) {
+        return jsonErrorResponse("您还没有知识库，请先在设置中创建知识库", 400);
+      }
+      
       const apiURL = `${base}/api/chat`;
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (effectiveApiKey) {
@@ -447,11 +475,9 @@ export async function POST(req: Request) {
       const body: Record<string, unknown> = {
         model: effectiveModel || "ep-20260303160518-fzrwg",
         messages: toRagMessages(messages),
+        knowledge_base_id: kbId,
       };
       if (system) body.system = system;
-      if (typeof knowledgeBaseId === "number" && knowledgeBaseId > 0) {
-        body.knowledge_base_id = knowledgeBaseId;
-      }
 
       const apiResponse = await fetch(apiURL, {
         method: "POST",
