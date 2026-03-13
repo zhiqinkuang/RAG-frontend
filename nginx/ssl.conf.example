@@ -1,0 +1,108 @@
+# ============================================
+# SSL/TLS Configuration Example
+# ============================================
+# 
+# This file provides example SSL configuration for production deployment.
+# 
+# Prerequisites:
+# 1. Obtain SSL certificates (Let's Encrypt recommended)
+# 2. Place certificates in /etc/nginx/ssl/
+# 3. Update nginx.conf to use HTTPS server block
+#
+# ============================================
+
+# Option 1: Let's Encrypt with Certbot
+# ============================================
+# Install certbot:
+#   Ubuntu/Debian: sudo apt install certbot python3-certbot-nginx
+#   CentOS/RHEL: sudo dnf install certbot python3-certbot-nginx
+#
+# Obtain certificate:
+#   sudo certbot --nginx -d your-domain.com -d www.your-domain.com
+#
+# Auto-renewal:
+#   sudo certbot renew --dry-run
+#   sudo systemctl enable certbot.timer
+
+# Option 2: Manual Certificate Setup
+# ============================================
+# 1. Obtain certificates from your CA
+# 2. Create SSL directory:
+#    sudo mkdir -p /etc/nginx/ssl
+#
+# 3. Copy certificates:
+#    sudo cp your-cert.pem /etc/nginx/ssl/cert.pem
+#    sudo cp your-key.pem /etc/nginx/ssl/key.pem
+#    sudo cp chain.pem /etc/nginx/ssl/chain.pem
+#
+# 4. Set permissions:
+#    sudo chmod 600 /etc/nginx/ssl/key.pem
+#    sudo chmod 644 /etc/nginx/ssl/cert.pem
+#    sudo chown root:root /etc/nginx/ssl/*
+
+# Option 3: Self-signed Certificate (Development Only)
+# ============================================
+# Generate self-signed certificate:
+#   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#     -keyout /etc/nginx/ssl/key.pem \
+#     -out /etc/nginx/ssl/cert.pem \
+#     -subj "/CN=localhost"
+
+# ============================================
+# SSL Configuration Snippets
+# ============================================
+
+# Modern SSL Configuration (Recommended)
+# ------------------------------------------
+# ssl_protocols TLSv1.2 TLSv1.3;
+# ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+# ssl_prefer_server_ciphers off;
+
+# Intermediate SSL Configuration (For broader compatibility)
+# ------------------------------------------
+# ssl_protocols TLSv1.2 TLSv1.3;
+# ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+# ssl_prefer_server_ciphers off;
+
+# SSL Session Configuration
+# ------------------------------------------
+# ssl_session_timeout 1d;
+# ssl_session_cache shared:SSL:50m;
+# ssl_session_tickets off;
+
+# OCSP Stapling
+# ------------------------------------------
+# ssl_stapling on;
+# ssl_stapling_verify on;
+# ssl_trusted_certificate /etc/nginx/ssl/chain.pem;
+# resolver 8.8.8.8 8.8.4.4 valid=300s;
+# resolver_timeout 5s;
+
+# HSTS (HTTP Strict Transport Security)
+# ------------------------------------------
+# add_header Strict-Transport-Security "max-age=63072000" always;
+
+# HSTS with subdomains
+# ------------------------------------------
+# add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+
+# HSTS with preload
+# ------------------------------------------
+# add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+# ============================================
+# Docker Compose SSL Setup
+# ============================================
+# For Docker deployments, mount SSL certificates:
+#
+# volumes:
+#   - ./nginx/ssl:/etc/nginx/ssl:ro
+#
+# Or use a sidecar container for certificate management:
+#
+# certbot:
+#   image: certbot/certbot
+#   volumes:
+#     - ./certbot/conf:/etc/letsencrypt
+#     - ./certbot/www:/var/www/certbot
+#   entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"

@@ -9,6 +9,9 @@ import {
   useIsMarkdownCodeBlock,
 } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { type FC, memo, useState } from "react";
 import { CheckIcon, CopyIcon } from "lucide-react";
 
@@ -20,7 +23,8 @@ import { cn } from "@/lib/utils";
 const MarkdownTextImpl = () => {
   return (
     <MarkdownTextPrimitive
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex]}
       className="aui-md"
       components={defaultComponents}
     />
@@ -39,9 +43,9 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
 
   return (
     <div
-      className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-xl border px-3.5 py-2 text-xs"
+      className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-xl border pl-8 pr-6 py-3 text-xs"
       style={{
-        background: "#252526",
+        background: "#1e1e1e",
         borderColor: "#3c3c3c",
         borderBottom: "none",
         borderLeftWidth: "3px",
@@ -233,7 +237,7 @@ const defaultComponents = memoizeMarkdownComponents({
   pre: ({ className, ...props }) => (
     <pre
       className={cn(
-        "aui-md-pre overflow-x-auto rounded-b-xl rounded-t-none border border-t-0 px-4 py-3.5 text-[13px] leading-[1.6] font-mono selection:bg-[#264f78]",
+        "aui-md-pre overflow-x-auto overflow-y-hidden rounded-b-xl rounded-t-none border border-t-0 pl-8 pr-6 py-5 text-[13px] leading-[1.8] font-mono selection:bg-[#264f78] whitespace-pre [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-[#2d2d2d] [&::-webkit-scrollbar-thumb]:bg-[#555] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb:hover]:bg-[#777]",
         className,
       )}
       style={{
