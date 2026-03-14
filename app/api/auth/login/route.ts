@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { validateEmail, validatePassword, validateURL, sanitizeInput } from "@/lib/validation";
 
 /** 请求体大小限制（字节）- 1MB */
@@ -9,15 +9,45 @@ function errorResponse(message: string, status: number = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
+/**
+ * 从请求中提取客户端 IP 地址
+ * 优先使用 x-forwarded-for 头（代理场景），其次使用 x-real-ip
+ */
+function getClientIP(req: NextRequest): string {
+  // x-forwarded-for 可能包含多个 IP，取第一个（原始客户端 IP）
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+  
+  // 备选：x-real-ip 头
+  const realIP = req.headers.get("x-real-ip");
+  if (realIP) {
+    return realIP.trim();
+  }
+  
+  // Next.js 提供的 ip 属性（需要配置 trustHostHeader）
+  const ip = (req as NextRequest & { ip?: string }).ip;
+  if (ip) {
+    return ip;
+  }
+  
+  return "unknown";
+}
+
 /** 安全日志（不含敏感信息） */
 function logRequest(action: string, info: { email?: string; ip?: string; success: boolean }) {
   const timestamp = new Date().toISOString();
   const maskedEmail = info.email ? info.email.replace(/(.{2}).*(@.*)/, "$1***$2") : "unknown";
-  console.log(`[${timestamp}] ${action}: email=${maskedEmail}, success=${info.success}`);
+  const maskedIP = info.ip ? info.ip.replace(/(\d+\.\d+)\.\d+\.\d+/, "$1.***.***") : "unknown";
+  console.log(`[${timestamp}] ${action}: email=${maskedEmail}, ip=${maskedIP}, success=${info.success}`);
 }
 
 /** 代理到 RAG 后端 POST /api/v1/auth/login */
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  // 获取客户端 IP
+  const clientIP = getClientIP(req);
+  
   try {
     // 检查请求体大小
     const contentLength = req.headers.get("content-length");
@@ -76,7 +106,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({ email: sanitizedEmail.toLowerCase(), password }),
       });
     } catch (fetchError) {
-      logRequest("LOGIN", { email: sanitizedEmail, success: false });
+      logRequest("LOGIN", { email: sanitizedEmail, ip: clientIP, success: false });
       // 网络连接错误
       const errMsg = fetchError instanceof Error ? fetchError.message.toLowerCase() : "";
       if (errMsg.includes("econnrefused") || errMsg.includes("connection refused")) {
@@ -94,7 +124,7 @@ export async function POST(req: Request) {
     const data = await res.json().catch(() => ({}));
     
     if (!res.ok) {
-      logRequest("LOGIN", { email: sanitizedEmail, success: false });
+      logRequest("LOGIN", { email: sanitizedEmail, ip: clientIP, success: false });
       // 根据状态码返回具体的中文错误
       if (res.status === 401) {
         return errorResponse("用户名或密码错误", 401);
@@ -114,11 +144,11 @@ export async function POST(req: Request) {
     const code = (data as { code?: number }).code;
     const payload = (data as { data?: unknown }).data;
     if (code !== 0 || !payload) {
-      logRequest("LOGIN", { email: sanitizedEmail, success: false });
+      logRequest("LOGIN", { email: sanitizedEmail, ip: clientIP, success: false });
       return errorResponse("用户名或密码错误", 400);
     }
 
-    logRequest("LOGIN", { email: sanitizedEmail, success: true });
+    logRequest("LOGIN", { email: sanitizedEmail, ip: clientIP, success: true });
     return NextResponse.json(payload);
   } catch (e) {
     // 不暴露内部错误详情
