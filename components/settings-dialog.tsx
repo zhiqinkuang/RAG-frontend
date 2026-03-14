@@ -375,7 +375,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                   <Input
                     id="baseURL"
                     type="url"
-                    placeholder={currentProvider.placeholder || "http://127.0.0.1:8080"}
+                    placeholder={currentProvider.placeholder || "https://..."}
                     value={settings.baseURL}
                     className="h-10 text-sm"
                     onChange={(e) =>

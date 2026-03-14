@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const ctx = getBaseAndAuth(req);
     if (!ctx) {
       return NextResponse.json(
-        { error: "baseURL (query) and Authorization header are required" },
+        { error: "缺少必要参数：baseURL 和 Authorization 请求头" },
         { status: 400 }
       );
     }
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return NextResponse.json(
-        { error: (data as { message?: string }).message ?? "Request failed" },
+        { error: (data as { message?: string }).message ?? "请求失败" },
         { status: res.status }
       );
     }
@@ -37,14 +37,14 @@ export async function GET(req: Request) {
     const payload = (data as { data?: unknown }).data;
     if (code !== 0) {
       return NextResponse.json(
-        { error: (data as { message?: string }).message ?? "Request failed" },
+        { error: (data as { message?: string }).message ?? "请求失败" },
         { status: 400 }
       );
     }
 
     return NextResponse.json(payload ?? {});
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Server error";
+    const message = e instanceof Error ? e.message : "服务器错误";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -55,7 +55,7 @@ export async function PUT(req: Request) {
     const auth = req.headers.get("Authorization");
     if (!auth?.startsWith("Bearer ")) {
       return NextResponse.json(
-        { error: "Authorization header is required" },
+        { error: "缺少 Authorization 请求头" },
         { status: 400 }
       );
     }
@@ -69,7 +69,7 @@ export async function PUT(req: Request) {
     const base = baseURL?.replace(/\/$/, "");
     if (!base) {
       return NextResponse.json(
-        { error: "baseURL is required" },
+        { error: "缺少 baseURL 参数" },
         { status: 400 }
       );
     }
@@ -86,7 +86,7 @@ export async function PUT(req: Request) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       return NextResponse.json(
-        { error: (data as { message?: string }).message ?? "Update failed" },
+        { error: (data as { message?: string }).message ?? "更新失败" },
         { status: res.status }
       );
     }
@@ -95,14 +95,14 @@ export async function PUT(req: Request) {
     const payload = (data as { data?: unknown }).data;
     if (code !== 0) {
       return NextResponse.json(
-        { error: (data as { message?: string }).message ?? "Update failed" },
+        { error: (data as { message?: string }).message ?? "更新失败" },
         { status: 400 }
       );
     }
 
     return NextResponse.json(payload ?? {});
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Server error";
+    const message = e instanceof Error ? e.message : "服务器错误";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

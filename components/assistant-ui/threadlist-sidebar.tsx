@@ -125,7 +125,7 @@ export function ThreadListSidebar({
             variant="ghost"
             size="sm"
             className="gap-1.5"
-            onClick={() => router.push("/paper")}
+            onClick={() => router.push("/paper-search")}
           >
             <BookOpen className="size-4" />
             <span className="text-xs">{t.paperSearch || "论文搜索"}</span>

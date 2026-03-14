@@ -1,0 +1,86 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - main [ref=e3]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]:
+          - generic [ref=e8]:
+            - button "返回聊天" [ref=e9]:
+              - img
+            - heading "论文搜索" [level=1] [ref=e10]
+          - generic [ref=e11]:
+            - img [ref=e12]
+            - generic [ref=e16]: Test KB 1773473639556
+        - generic [ref=e17]:
+          - generic [ref=e18]:
+            - button "智能搜索" [ref=e19]:
+              - img
+              - generic [ref=e20]: 智能搜索
+            - button "关键词" [ref=e21]:
+              - img
+              - generic [ref=e22]: 关键词
+          - textbox "输入关键词、描述或粘贴论文摘要..." [ref=e25]
+          - button [ref=e26]:
+            - img
+          - generic [ref=e28]:
+            - img [ref=e29]
+            - combobox [ref=e33] [cursor=pointer]:
+              - option "Test KB 1773473639556" [selected]
+              - option "Test KB 1773473607622"
+              - option "Test KB 1773473429864"
+              - option "Test KB 1773473047044"
+              - option "Test KB 1773472982014"
+              - option "Test KB 1773472903373"
+              - option "Test KB 1773472656850"
+              - option "Test KB 1773472578998"
+              - option "Test KB 1773472439427"
+              - option "Test KB 1773472371185"
+              - option "Test KB 1773472308468"
+              - option "Test KB 1773472222635"
+              - option "Test KB 1773471818671"
+              - option "Test KB 1773471619039"
+              - option "Test KB 1773471553684"
+              - option "Test KB 1773471472902"
+              - option "Test KB 1773471000752"
+              - option "Test KB 1773470921227"
+              - option "Test KB 1773470683765"
+              - option "Test KB 1773470610225"
+              - option "Test KB 1773470534430"
+              - option "Test KB 1773470464221"
+              - option "Test KB 1773470379453"
+              - option "测试解析器-1773388194"
+              - option "Test KB 1773303952989"
+              - option "Test KB 1773303548285"
+              - option "Test KB 1773303534172"
+              - option "Test KB 1773303470512"
+              - option "Test KB 1773303402499"
+              - option "Test KB 1773303345593"
+              - option "Test KB 1773303251390"
+              - option "测试知识库"
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - img [ref=e38]
+            - text: "热门搜索:"
+          - generic [ref=e40]:
+            - button "深度学习" [ref=e41]
+            - button "Transformer" [ref=e42]
+            - button "大语言模型" [ref=e43]
+            - button "图神经网络" [ref=e44]
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - img [ref=e47]
+            - text: "试试这些:"
+          - generic [ref=e50]:
+            - button "帮我找关于深度学习图像分类的最新论文" [ref=e51]:
+              - img
+              - text: 帮我找关于深度学习图像分类的最新论文
+            - button "Transformer 在自然语言处理中的应用研究" [ref=e52]:
+              - img
+              - text: Transformer 在自然语言处理中的应用研究
+      - img [ref=e55]
+  - region "Notifications alt+T"
+  - alert [ref=e58]
+```

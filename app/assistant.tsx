@@ -18,10 +18,8 @@ import { Thread } from "@/components/assistant-ui/thread";
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThreadListSidebar } from "@/components/assistant-ui/threadlist-sidebar";
-import { Separator } from "@/components/ui/separator";
 import { SettingsDialog, useApiKey, type ApiKeySettings } from "@/components/settings-dialog";
 import { useI18n } from "@/lib/i18n";
 import { Component, useMemo, useState, useCallback, useEffect, useRef, type FC, type ReactNode } from "react";
@@ -45,7 +43,6 @@ class CustomChatTransport extends AssistantChatTransport<UIMessage> {
       fetch: (url, init) => {
         return fetch(url, {
           ...init,
-          // @ts-expect-error - 非标准属性，用于禁用浏览器缓冲
           cache: "no-store",
         });
       },
@@ -172,10 +169,10 @@ const ThreadDeleteHandler: FC = () => {
         // 切换到最近的对话或创建新对话
         if (remainingThreads.length > 0) {
           const latestThread = remainingThreads[0];
-          aui.threadList().switchToThread(latestThread.remoteId);
+          aui.threads().switchToThread(latestThread.remoteId);
         } else {
           // 没有其他对话，创建新对话
-          aui.threadList().newThread();
+          aui.threads().switchToNewThread();
         }
       }
     });
@@ -238,8 +235,6 @@ const AssistantContent: FC<{
           <ThreadListSidebar />
           <SidebarInset>
             <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-              <SidebarTrigger />
-              <Separator orientation="vertical" className="mr-2 h-4" />
               <h1 className="text-sm font-medium">
                 {t.chat}{" "}
                 <span className="font-normal text-muted-foreground">

@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "postbuild": "echo $npm_package_version > .next/BUILD_VERSION",
     "start": "next start",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
