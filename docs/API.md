@@ -8,12 +8,13 @@
 
 ## 中文
 
-本前端支持两种方式对接自定义后端：
+本前端支持三种方式对接自定义后端：
 
 | 模式 | 说明 | 适用场景 |
 |------|------|----------|
 | **OpenAI 兼容模式** | 后端实现 `/chat/completions` 接口，遵循 OpenAI SSE 格式 | 已有 OpenAI 兼容 API 或使用 LLM 框架 |
-| **自定义 API 模式** | 后端实现任意路径接口，直接返回 UI Message Stream 格式 | 自研后端、RAG 系统、Agent 等 |
+| **RAG 知识库模式** | 后端实现 RAG 知识库 API（如 `POST /api/chat`），支持 Token 鉴权与知识库 ID | 对接 RAG 知识库后端（见下方文档） |
+| **自定义 API 模式** | 后端实现任意路径接口，直接返回 UI Message Stream 格式 | 自研后端、Agent 等 |
 
 ---
 
@@ -412,6 +413,44 @@ func main() {
 
 ---
 
+### 模式三：RAG 知识库后端
+
+在设置面板中选择「**RAG 知识库**」提供商，用于对接实现 RAG 知识库 API 的后端（默认 `http://127.0.0.1:8080`）。
+
+**配置项：**
+
+| 配置项 | 说明 |
+|--------|------|
+| **Base URL** | RAG 后端地址，如 `http://127.0.0.1:8080` |
+| **API Key** | 登录后获得的 JWT Token（`POST /api/v1/auth/login` 返回的 `data.token`） |
+| **知识库 ID** | 可选，指定绑定的知识库 ID；留空则由后端决定 |
+
+前端会将请求转发到 Next.js 的 `/api/chat`，再由服务端代理到 `{Base URL}/api/chat`。请求体格式与后端文档「9.2 自定义流式接口（UI 消息流）」一致：
+
+- **Method**: `POST`
+- **Path**: `{Base URL}/api/chat`
+- **Headers**: `Authorization: Bearer <token>`（若已配置 API Key）
+- **Body**: `{ model, system?, knowledge_base_id?, messages }`  
+  - `messages` 为 `{ id, role, content, parts }[]` 格式
+
+响应为 SSE 流（`text-start` / `text-delta` / `text-end` / `finish`），与模式二相同，便于前端流式展示。
+
+**用户登录 / 注册（鉴权代理）**
+
+前端通过 Next.js 代理调用 RAG 后端鉴权接口，避免跨域。在设置 → 用户 中，当提供商为「RAG 知识库」且已填写 Base URL 时，可进行登录、注册与退出。
+
+| 前端请求 | 代理目标 | 说明 |
+|----------|----------|------|
+| `POST /api/auth/login` | `POST {BaseURL}/api/v1/auth/login` | Body: `{ baseURL, email, password }`，返回 `{ token, expire, user }` |
+| `POST /api/auth/register` | `POST {BaseURL}/api/v1/auth/register` | Body: `{ baseURL, username, email, password }` |
+| `POST /api/auth/refresh` | `POST {BaseURL}/api/v1/auth/refresh` | Header: `Authorization: Bearer <token>`，Body: `{ baseURL }` |
+| `GET /api/user/profile?baseURL=xxx` | `GET {BaseURL}/api/v1/user/profile` | Header: `Authorization: Bearer <token>` |
+| `PUT /api/user/profile` | `PUT {BaseURL}/api/v1/user/profile` | Header: `Authorization`，Body: `{ baseURL, username?, avatar? }` |
+
+登录成功后，前端会将返回的 `token` 写入 API 设置中的 API Key，后续对话请求会自动携带该 Token。
+
+---
+
 ### CORS 配置
 
 如果后端和前端不在同一域名下，需要配置 CORS：
@@ -447,12 +486,13 @@ Content-Type: application/json
 
 ## English
 
-This frontend supports two modes for connecting to a custom backend:
+This frontend supports three modes for connecting to a custom backend:
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
 | **OpenAI-Compatible** | Backend implements `/chat/completions` in standard OpenAI SSE format | Existing OpenAI-compatible APIs or LLM frameworks |
-| **Custom API** | Backend implements any endpoint, returns UI Message Stream format directly | Custom RAG systems, Agent platforms, etc. |
+| **RAG Knowledge Base** | Backend implements RAG API (e.g. `POST /api/chat`) with token auth and optional knowledge_base_id | RAG backends (see RAG API doc) |
+| **Custom API** | Backend implements any endpoint, returns UI Message Stream format directly | Agent platforms, etc. |
 
 ---
 

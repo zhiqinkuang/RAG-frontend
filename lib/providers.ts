@@ -6,6 +6,7 @@ export type ProviderId =
   | "zhipu"
   | "qwen"
   | "moonshot"
+  | "rag"
   | "custom"
   | "custom-api";
 
@@ -23,14 +24,14 @@ export const PROVIDERS: ProviderConfig[] = [
     name: "OpenAI",
     baseURL: "https://api.openai.com/v1",
     defaultModel: "gpt-4o-mini",
-    placeholder: "gpt-4o-mini / gpt-4o",
+    placeholder: "GPT-4o-mini / GPT-4o",
   },
   {
     id: "doubao",
     name: "火山引擎豆包",
     baseURL: "https://ark.cn-beijing.volces.com/api/v3",
-    defaultModel: "ep-20241101xxxxx",
-    placeholder: "推理接入点 ID，如 ep-20241101xxxxx",
+    defaultModel: "doubao-seed-2-0-lite-260215",
+    placeholder: "doubao-seed-2-0-lite-260215",
   },
   {
     id: "deepseek",
@@ -59,6 +60,13 @@ export const PROVIDERS: ProviderConfig[] = [
     baseURL: "https://api.moonshot.cn/v1",
     defaultModel: "moonshot-v1-8k",
     placeholder: "moonshot-v1-8k / moonshot-v1-32k",
+  },
+  {
+    id: "rag",
+    name: "RAG 知识库",
+    baseURL: "",
+    defaultModel: "ep-20260303160518-fzrwg",
+    placeholder: "http://127.0.0.1:8080",
   },
   {
     id: "custom",

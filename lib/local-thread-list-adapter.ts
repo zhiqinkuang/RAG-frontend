@@ -16,6 +16,14 @@ export type StoredThread = {
   createdAt: number;
 };
 
+// 回调函数类型
+type OnThreadDeletedCallback = (deletedId: string, remainingThreads: StoredThread[]) => void;
+let onThreadDeletedCallback: OnThreadDeletedCallback | null = null;
+
+export function setOnThreadDeletedCallback(cb: OnThreadDeletedCallback | null) {
+  onThreadDeletedCallback = cb;
+}
+
 function readThreads(): StoredThread[] {
   if (typeof window === "undefined") return [];
   try {
@@ -45,16 +53,57 @@ function updateThread(remoteId: string, patch: Partial<StoredThread>) {
 }
 
 export class LocalStorageThreadListAdapter {
-  async list() {
-    const threads = readThreads()
+  // 用于通知 UI 更新的回调
+  private _onUpdate: (() => void) | null = null;
+  
+  setOnUpdate(callback: (() => void) | null) {
+    this._onUpdate = callback;
+  }
+  
+  private notifyUpdate() {
+    if (this._onUpdate) {
+      this._onUpdate();
+    }
+  }
+
+  // 未归档的会话列表
+  get threads() {
+    return readThreads()
+      .filter((t) => t.status !== "archived")
       .sort((a, b) => b.createdAt - a.createdAt)
       .map((t) => ({
+        id: t.remoteId,
+        remoteId: t.remoteId,
+        externalId: t.externalId,
+        title: t.title,
+        status: "regular" as const,
+      }));
+  }
+
+  // 归档的会话列表
+  get archivedThreads() {
+    return readThreads()
+      .filter((t) => t.status === "archived")
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((t) => ({
+        id: t.remoteId,
+        remoteId: t.remoteId,
+        externalId: t.externalId,
+        title: t.title,
+        status: "archived" as const,
+      }));
+  }
+
+  async list() {
+    const allThreads = readThreads().sort((a, b) => b.createdAt - a.createdAt);
+    return {
+      threads: allThreads.map((t) => ({
         remoteId: t.remoteId,
         externalId: t.externalId,
         title: t.title,
         status: t.status as "regular" | "archived",
-      }));
-    return { threads };
+      })),
+    };
   }
 
   async initialize(threadId: string) {
@@ -75,25 +124,34 @@ export class LocalStorageThreadListAdapter {
 
   async rename(remoteId: string, newTitle: string) {
     updateThread(remoteId, { title: newTitle });
+    this.notifyUpdate();
   }
 
   async archive(remoteId: string) {
     updateThread(remoteId, { status: "archived" });
+    this.notifyUpdate();
   }
 
   async unarchive(remoteId: string) {
     updateThread(remoteId, { status: "regular" });
+    this.notifyUpdate();
   }
 
   async delete(remoteId: string) {
-    const threads = readThreads().filter((t) => t.remoteId !== remoteId);
-    writeThreads(threads);
+    const threads = readThreads();
+    const remainingThreads = threads.filter((t) => t.remoteId !== remoteId);
+    writeThreads(remainingThreads);
     // Also clean up persisted messages for this thread
     try {
       localStorage.removeItem("chat-messages:" + remoteId);
     } catch {
       // ignore
     }
+    // 通知删除回调
+    if (onThreadDeletedCallback) {
+      onThreadDeletedCallback(remoteId, remainingThreads);
+    }
+    this.notifyUpdate();
   }
 
   async generateTitle(

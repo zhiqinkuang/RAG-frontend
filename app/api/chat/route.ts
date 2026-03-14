@@ -1,3 +1,6 @@
+// 禁用 Next.js 响应缓冲，确保流式传输
+export const dynamic = 'force-dynamic';
+
 import { frontendTools } from "@assistant-ui/react-ai-sdk";
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
@@ -159,6 +162,30 @@ function toOpenAIContent(msg: UIMessage): OpenAIContent {
   return content;
 }
 
+/** 转换为 RAG 自定义接口 /api/chat 所需的消息格式：id, role, content, parts */
+function toRagMessages(messages: UIMessage[]): Array<{ id: string; role: string; content: string; parts: Array<{ type: string; text?: string }> }> {
+  return messages.map((msg) => {
+    const parts = getMessageParts(msg) ?? [];
+    const textContent = getMessageText(msg);
+    const role = (msg as { role?: string }).role === "human" ? "user" : String((msg as { role?: string }).role ?? "user");
+    const id = String((msg as { id?: string }).id ?? `msg-${Math.random().toString(36).slice(2, 11)}`);
+    if (role === "assistant") {
+      return {
+        id,
+        role: "assistant",
+        content: "",
+        parts: textContent ? [{ type: "text", text: textContent }] : [],
+      };
+    }
+    return {
+      id,
+      role: "user",
+      content: textContent,
+      parts: [],
+    };
+  });
+}
+
 /** 转换 UI 消息为 OpenAI 兼容格式（支持文本 + 图片） */
 function toOpenAIMessages(messages: UIMessage[], system?: string): Array<{ role: string; content: OpenAIContent }> {
   const out: Array<{ role: string; content: OpenAIContent }> = [];
@@ -194,14 +221,14 @@ async function streamChat(
   const url = baseURL.replace(/\/$/, "") + "/chat/completions";
   const openAIMessages = toOpenAIMessages(messages, system);
   const body = {
-    model: model || "gpt-4o-mini",
+    model: model || "doubao-seed-2-0-lite-260215",
     messages: openAIMessages,
     stream: true,
   };
 
   if (process.env.NODE_ENV === "development" && openAIMessages.length > 0) {
     const last = openAIMessages[openAIMessages.length - 1];
-    console.log("[chat] messages count:", openAIMessages.length, "last role:", last?.role, "content preview:", typeof last?.content === "string" ? last.content.slice(0, 80) : "");
+    console.log("[chat] url:", url, "model:", model || "(empty)", "messages:", openAIMessages.length, "last role:", last?.role);
   }
 
   const response = await fetch(url, {
@@ -354,6 +381,7 @@ export async function POST(req: Request) {
       apiKey,
       baseURL: requestBaseURL,
       model,
+      knowledgeBaseId,
     }: {
       messages: UIMessage[];
       system?: string;
@@ -362,6 +390,7 @@ export async function POST(req: Request) {
       apiKey?: string;
       baseURL?: string;
       model?: string;
+      knowledgeBaseId?: number;
     } = await req.json();
 
     const provider = (providerId ?? "doubao") as ProviderId;
@@ -402,6 +431,100 @@ export async function POST(req: Request) {
       });
 
       return result.toUIMessageStreamResponse();
+    }
+
+    // RAG 知识库：调用后端 POST /api/chat（UI Message Stream 格式）
+    if (provider === "rag") {
+      const base = effectiveBaseURL?.replace(/\/$/, "") ?? "";
+      if (!base) {
+        return jsonErrorResponse("请填写 RAG 后端地址 (Base URL)", 400);
+      }
+      
+      // 自动获取用户的知识库
+      let kbId = knowledgeBaseId;
+      if (typeof kbId !== "number" || kbId <= 0) {
+        // 从后端获取用户的知识库列表
+        try {
+          const kbListURL = `${base}/api/v1/knowledge-bases?page=1&page_size=1`;
+          const kbHeaders: Record<string, string> = { "Content-Type": "application/json" };
+          if (effectiveApiKey) {
+            kbHeaders["Authorization"] = `Bearer ${effectiveApiKey}`;
+          }
+          const kbResponse = await fetch(kbListURL, { headers: kbHeaders });
+          if (kbResponse.ok) {
+            const kbData = await kbResponse.json();
+            const kbs = kbData?.data?.knowledge_bases || [];
+            if (kbs.length > 0) {
+              kbId = kbs[0].ID;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to auto-fetch knowledge bases:", e);
+        }
+      }
+      
+      if (typeof kbId !== "number" || kbId <= 0) {
+        return jsonErrorResponse("您还没有知识库，请先在设置中创建知识库", 400);
+      }
+      
+      const apiURL = `${base}/api/chat`;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (effectiveApiKey) {
+        headers["Authorization"] = `Bearer ${effectiveApiKey}`;
+      }
+      const body: Record<string, unknown> = {
+        model: effectiveModel || "ep-20260303160518-fzrwg",
+        messages: toRagMessages(messages),
+        knowledge_base_id: kbId,
+      };
+      if (system) body.system = system;
+
+      const apiResponse = await fetch(apiURL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (!apiResponse.ok) {
+        const errorText = await apiResponse.text().catch(() => "Unknown error");
+        return new Response(
+          JSON.stringify({ error: errorText || `RAG API error: ${apiResponse.status}` }),
+          { status: apiResponse.status, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // 使用 TransformStream 实时转发流数据，避免缓冲
+      const stream = new ReadableStream({
+        async start(controller) {
+          const reader = apiResponse.body?.getReader();
+          if (!reader) {
+            controller.close();
+            return;
+          }
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                controller.close();
+                return;
+              }
+              controller.enqueue(value);
+            }
+          } catch (error) {
+            controller.error(error);
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-transform",
+          "Connection": "keep-alive",
+          "x-vercel-ai-ui-message-stream": "v1",
+          "X-Accel-Buffering": "no",
+        },
+      });
     }
 
     // 自定义 API 模式：直接转发，后端返回 UI Message Stream 格式
@@ -453,13 +576,16 @@ export async function POST(req: Request) {
 
     if (!chatResponse.ok) {
       const errorText = await chatResponse.text().catch(() => "Unknown error");
-      return new Response(
-        JSON.stringify({ error: errorText || `Request failed: ${chatResponse.status}` }),
-        {
-          status: chatResponse.status,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      let message = errorText?.trim() || `Request failed: ${chatResponse.status}`;
+      if (chatResponse.status === 404 && provider === "doubao") {
+        message =
+          "豆包接口 404：请确认 1) 模型填写的是火山引擎控制台中的「推理接入点 ID」（形如 ep-xxxxxxxx），不是模型名称；2) Base URL 为 https://ark.cn-beijing.volces.com/api/v3；3) API Key 有效且该 Key 有该接入点的调用权限。原始错误: " +
+          message;
+      }
+      return new Response(JSON.stringify({ error: message }), {
+        status: chatResponse.status,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const stream = transformToUIMessageStream(chatResponse);

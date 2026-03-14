@@ -22,6 +22,14 @@ const ShikiHighlighter: FC<SyntaxHighlighterProps> = ({
     codeToHtml(code, {
       lang,
       theme: "dark-plus",
+      transformers: [
+        {
+          pre(node) {
+            // VSCode dark-plus theme background
+            node.properties.style = "background: #1e1e1e !important;";
+          },
+        },
+      ],
     }).then((result) => {
       if (!cancelled) setHtml(result);
     });
@@ -42,7 +50,7 @@ const ShikiHighlighter: FC<SyntaxHighlighterProps> = ({
 
   return (
     <div
-      className="[&>pre]:!m-0 [&>pre]:!bg-transparent [&>pre]:!p-0 [&_code]:!bg-transparent"
+      className="[&>pre]:!m-0 [&>pre]:!bg-[#1e1e1e] [&>pre]:!pl-8 [&>pre]:!pr-6 [&>pre]:!py-5 [&_code]:!bg-transparent [&>pre]:!overflow-x-auto [&>pre]:!whitespace-pre [&_code]:!whitespace-pre"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

@@ -7,9 +7,10 @@ import {
   ThreadListItemMorePrimitive,
   ThreadListItemPrimitive,
   ThreadListPrimitive,
+  useAuiState,
 } from "@assistant-ui/react";
-import { ArchiveIcon, MoreHorizontalIcon, PlusIcon, TrashIcon } from "lucide-react";
-import type { FC } from "react";
+import { ArchiveIcon, ArchiveRestoreIcon, ChevronDownIcon, ChevronRightIcon, MoreHorizontalIcon, PlusIcon, TrashIcon } from "lucide-react";
+import React, { type FC } from "react";
 import { useI18n } from "@/lib/i18n";
 
 export const ThreadList: FC = () => {
@@ -22,6 +23,8 @@ export const ThreadList: FC = () => {
       <AssistantIf condition={({ threads }) => !threads.isLoading}>
         <ThreadListPrimitive.Items components={{ ThreadListItem }} />
       </AssistantIf>
+      {/* 归档会话区域 */}
+      <ArchivedThreadsSection />
     </ThreadListPrimitive.Root>
   );
 };
@@ -95,6 +98,95 @@ const ThreadListItemMore: FC = () => {
             {t.archive}
           </ThreadListItemMorePrimitive.Item>
         </ThreadListItemPrimitive.Archive>
+        <ThreadListItemPrimitive.Delete asChild>
+          <ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive">
+            <TrashIcon className="size-4" />
+            {t.deleteThread}
+          </ThreadListItemMorePrimitive.Item>
+        </ThreadListItemPrimitive.Delete>
+      </ThreadListItemMorePrimitive.Content>
+    </ThreadListItemMorePrimitive.Root>
+  );
+};
+
+// 归档会话折叠区域
+const ArchivedThreadsSection: FC = () => {
+  const { t } = useI18n();
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  
+  // 获取归档会话数量
+  const archivedCount = useAuiState(({ threads }) => threads.archivedThreadIds.length);
+
+  // 如果没有归档会话，不显示区域
+  if (archivedCount === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-2 border-t pt-2">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex w-full items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {isExpanded ? (
+          <ChevronDownIcon className="size-3.5" />
+        ) : (
+          <ChevronRightIcon className="size-3.5" />
+        )}
+        <ArchiveIcon className="size-3.5" />
+        <span>{t.archivedThreads || "已归档"}</span>
+        <span className="ml-auto text-muted-foreground/60">({archivedCount})</span>
+      </button>
+      {isExpanded && (
+        <div className="mt-1">
+          <ThreadListPrimitive.Items
+            archived
+            components={{ ThreadListItem: ArchivedThreadListItem }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 归档会话项（灰色显示，可取消归档）
+const ArchivedThreadListItem: FC = () => {
+  const { t } = useI18n();
+  return (
+    <ThreadListItemPrimitive.Root className="aui-thread-list-item group flex h-9 items-center gap-2 rounded-lg transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none data-active:bg-muted opacity-60 hover:opacity-100">
+      <ThreadListItemPrimitive.Trigger className="aui-thread-list-item-trigger flex h-full min-w-0 flex-1 items-center truncate px-3 text-start text-sm">
+        <ThreadListItemPrimitive.Title fallback={t.newChat} />
+      </ThreadListItemPrimitive.Trigger>
+      <ArchivedThreadListItemMore />
+    </ThreadListItemPrimitive.Root>
+  );
+};
+
+const ArchivedThreadListItemMore: FC = () => {
+  const { t } = useI18n();
+  return (
+    <ThreadListItemMorePrimitive.Root>
+      <ThreadListItemMorePrimitive.Trigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="aui-thread-list-item-more mr-2 size-7 p-0 opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:bg-accent data-[state=open]:opacity-100 group-data-active:opacity-100"
+        >
+          <MoreHorizontalIcon className="size-4" />
+          <span className="sr-only">{t.moreOptions}</span>
+        </Button>
+      </ThreadListItemMorePrimitive.Trigger>
+      <ThreadListItemMorePrimitive.Content
+        side="bottom"
+        align="start"
+        className="aui-thread-list-item-more-content z-50 min-w-32 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+      >
+        <ThreadListItemPrimitive.Unarchive asChild>
+          <ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground">
+            <ArchiveRestoreIcon className="size-4" />
+            {t.unarchive || "取消归档"}
+          </ThreadListItemMorePrimitive.Item>
+        </ThreadListItemPrimitive.Unarchive>
         <ThreadListItemPrimitive.Delete asChild>
           <ThreadListItemMorePrimitive.Item className="aui-thread-list-item-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive">
             <TrashIcon className="size-4" />
