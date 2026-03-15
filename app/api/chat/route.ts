@@ -382,6 +382,7 @@ export async function POST(req: Request) {
       baseURL: requestBaseURL,
       model,
       knowledgeBaseId,
+      selectedDocIds,
     }: {
       messages: UIMessage[];
       system?: string;
@@ -391,6 +392,7 @@ export async function POST(req: Request) {
       baseURL?: string;
       model?: string;
       knowledgeBaseId?: number;
+      selectedDocIds?: number[];
     } = await req.json();
 
     const provider = (providerId ?? "doubao") as ProviderId;
@@ -476,6 +478,7 @@ export async function POST(req: Request) {
         model: effectiveModel || "ep-20260303160518-fzrwg",
         messages: toRagMessages(messages),
         knowledge_base_id: kbId,
+        document_ids: selectedDocIds || [],
       };
       if (system) body.system = system;
 

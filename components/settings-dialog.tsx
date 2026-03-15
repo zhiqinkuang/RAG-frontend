@@ -235,74 +235,74 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
         </Button>
       </DialogTrigger>
       <DialogContent
-        className="flex max-h-[90dvh] w-[calc(100vw-1rem)] max-w-md flex-col rounded-xl p-0 sm:p-0"
+        className="flex max-h-[90dvh] w-[calc(100vw-1rem)] sm:max-w-md md:max-w-lg flex-col rounded-xl p-0 sm:p-0"
       >
-        <DialogHeader className="flex-shrink-0 px-5 pt-5 pb-0">
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <Settings className="size-5 shrink-0" />
+        <DialogHeader className="flex-shrink-0 px-3 sm:px-4 md:px-5 pt-3 sm:pt-4 md:pt-5 pb-0">
+          <DialogTitle className="flex items-center gap-2 text-sm sm:text-base md:text-lg">
+            <Settings className="size-4 sm:size-5 shrink-0" />
             {t.settings}
           </DialogTitle>
         </DialogHeader>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b px-5">
+        <div className="flex gap-0.5 sm:gap-1 border-b px-3 sm:px-4 md:px-5 overflow-x-auto">
           {tabs.map((tb) => (
             <button
               key={tb.id}
               type="button"
               onClick={() => setTab(tb.id)}
-              className={`flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1 sm:gap-1.5 border-b-2 px-2 sm:px-2.5 md:px-3 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 tab === tb.id
                   ? "border-primary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {tb.icon}
-              {tb.label}
+              <span className="hidden sm:inline">{tb.label}</span>
             </button>
           ))}
         </div>
 
         {/* Tab Content */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-4">
           {/* ---- General Tab ---- */}
           {tab === "general" && (
-            <div className="space-y-5">
+            <div className="space-y-3 sm:space-y-4 md:space-y-5">
               {/* Theme */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t.theme}</label>
-                <div className="flex gap-2">
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="text-xs sm:text-sm font-medium">{t.theme}</label>
+                <div className="flex gap-1.5 sm:gap-2">
                   {themeOptions.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setTheme(opt.value)}
-                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                      className={`flex flex-1 items-center justify-center gap-1 sm:gap-1.5 rounded-lg border px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 md:py-2.5 text-xs sm:text-sm transition-colors ${
                         theme === opt.value
                           ? "border-primary bg-primary/5 text-foreground"
                           : "border-input text-muted-foreground hover:bg-muted/50"
                       }`}
                     >
                       {opt.icon}
-                      {opt.label}
+                      <span className="hidden sm:inline">{opt.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Language */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-1.5">
-                  <Globe className="size-4" />
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="text-xs sm:text-sm font-medium flex items-center gap-1.5">
+                  <Globe className="size-3.5 sm:size-4" />
                   {t.language}
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5 sm:gap-2">
                   {langOptions.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setLang(opt.value)}
-                      className={`flex flex-1 items-center justify-center rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                      className={`flex flex-1 items-center justify-center rounded-lg border px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 md:py-2.5 text-xs sm:text-sm transition-colors ${
                         lang === opt.value
                           ? "border-primary bg-primary/5 text-foreground"
                           : "border-input text-muted-foreground hover:bg-muted/50"
@@ -315,8 +315,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
               </div>
 
               {/* Local Download Path */}
-              <div className="space-y-2">
-                <label htmlFor="localDownloadPath" className="text-sm font-medium">
+              <div className="space-y-1.5 sm:space-y-2">
+                <label htmlFor="localDownloadPath" className="text-xs sm:text-sm font-medium">
                   {t.localDownloadPath}
                 </label>
                 <Input
@@ -324,7 +324,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                   type="text"
                   placeholder={t.localDownloadPathHint}
                   value={settings.localDownloadPath ?? ""}
-                  className="h-10 text-sm"
+                  className="h-8 sm:h-9 md:h-10 text-xs sm:text-sm"
                   onChange={(e) =>
                     setSettings((prev) => ({
                       ...prev,
@@ -341,11 +341,11 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
 
           {/* ---- API Tab ---- */}
           {tab === "api" && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">{t.provider}</label>
+            <div className="space-y-2.5 sm:space-y-3 md:space-y-4">
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className="text-xs sm:text-sm font-medium">{t.provider}</label>
                 <select
-                  className="flex h-10 w-full appearance-none rounded-lg border border-input bg-background pl-3 pr-10 py-2 text-sm touch-manipulation"
+                  className="flex h-8 sm:h-9 md:h-10 w-full appearance-none rounded-lg border border-input bg-background pl-2.5 sm:pl-3 pr-8 sm:pr-10 py-1.5 sm:py-2 text-base sm:text-sm touch-manipulation"
                   value={settings.provider}
                   onChange={(e) =>
                     handleProviderChange(e.target.value as ProviderId)
@@ -354,12 +354,12 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                   style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
                     backgroundRepeat: "no-repeat",
-                    backgroundPosition: "right 0.75rem center",
-                    backgroundSize: "1rem",
+                    backgroundPosition: "right 0.5rem sm:0.75rem center",
+                    backgroundSize: "0.875rem sm:1rem",
                   }}
                 >
                   {PROVIDERS.map((p) => (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.id} value={p.id} className="text-base sm:text-sm">
                       {p.name}
                     </option>
                   ))}
@@ -368,8 +368,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
 
               {/* Base URL - RAG 和 custom/custom-api 模式下显示 */}
               {(isRag || showBaseURLInput) && (
-                <div className="space-y-2">
-                  <label htmlFor="baseURL" className="text-sm font-medium">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label htmlFor="baseURL" className="text-xs sm:text-sm font-medium">
                     {isCustomApi ? "API URL" : "Base URL"}
                   </label>
                   <Input
@@ -377,7 +377,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                     type="url"
                     placeholder={currentProvider.placeholder || "https://..."}
                     value={settings.baseURL}
-                    className="h-10 text-sm"
+                    className="h-8 sm:h-9 md:h-10 text-xs sm:text-sm"
                     onChange={(e) =>
                       setSettings((prev) => ({
                         ...prev,
@@ -400,8 +400,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
 
               {/* API Key - RAG 模式不显示，其他模式显示 */}
               {!isRag && (
-                <div className="space-y-2">
-                  <label htmlFor="apiKey" className="text-sm font-medium">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label htmlFor="apiKey" className="text-xs sm:text-sm font-medium">
                     {t.apiKey}
                   </label>
                   <Input
@@ -409,7 +409,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                     type="password"
                     placeholder={t.apiKeyPlaceholder}
                     value={settings.apiKey}
-                    className="h-10 text-sm"
+                    className="h-8 sm:h-9 md:h-10 text-xs sm:text-sm"
                     onChange={(e) =>
                       setSettings((prev) => ({
                         ...prev,
@@ -421,8 +421,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
               )}
 
               {/* Model */}
-              <div className="space-y-2">
-                <label htmlFor="model" className="text-sm font-medium">
+              <div className="space-y-1.5 sm:space-y-2">
+                <label htmlFor="model" className="text-xs sm:text-sm font-medium">
                   {t.model}
                 </label>
                 <Input
@@ -430,7 +430,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                   type="text"
                   placeholder={currentProvider.placeholder}
                   value={settings.model}
-                  className="h-10 text-sm"
+                  className="h-8 sm:h-9 md:h-10 text-xs sm:text-sm"
                   onChange={(e) =>
                     setSettings((prev) => ({ ...prev, model: e.target.value }))
                   }
@@ -440,7 +440,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
               {/* RAG 知识库 ID - 已隐藏，用户在论文搜索页面选择 */}
               {/* {isRag && (
                 <div className="space-y-2">
-                  <label htmlFor="knowledgeBaseId" className="text-sm font-medium">
+                  <label htmlFor="knowledgeBaseId" className="text-xs sm:text-sm font-medium">
                     {t.knowledgeBaseId}
                   </label>
                   <Input
@@ -449,7 +449,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                     min={1}
                     placeholder={t.knowledgeBaseIdPlaceholder}
                     value={settings.knowledgeBaseId ?? ""}
-                    className="h-10 text-sm"
+                    className="h-9 sm:h-10 text-xs sm:text-sm"
                     onChange={(e) => {
                       const v = e.target.value.trim();
                       setSettings((prev) => ({
@@ -466,12 +466,12 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
 
               {/* RAG 登录区域 */}
               {isRag && (
-                <div className="space-y-3 rounded-lg border p-4">
-                  <div className="text-sm font-medium">{t.ragAccount}</div>
+                <div className="space-y-2 sm:space-y-3 rounded-lg border p-2.5 sm:p-3 md:p-4">
+                  <div className="text-xs sm:text-sm font-medium">{t.ragAccount}</div>
                   {ragUser && getStoredRagToken() ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-3">
-                        <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex size-8 sm:size-9 md:size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted">
                           {ragUser.avatar ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -480,10 +480,10 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                               className="size-full object-cover"
                             />
                           ) : (
-                            <User className="size-5 text-muted-foreground" />
+                            <User className="size-3.5 sm:size-4 md:size-5 text-muted-foreground" />
                           )}
                         </div>
-                        <div className="min-w-0 flex-1 text-sm">
+                        <div className="min-w-0 flex-1 text-xs sm:text-sm">
                           <div className="font-medium">{ragUser.username}</div>
                           <div className="truncate text-muted-foreground text-xs">
                             {ragUser.email}
@@ -494,18 +494,18 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="w-full"
+                        className="w-full h-8 sm:h-9 text-xs sm:text-sm"
                         onClick={handleRagLogout}
                       >
                         {t.logout}
                       </Button>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      <div className="flex gap-2">
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="flex gap-1.5 sm:gap-2">
                         <button
                           type="button"
-                          className={`flex-1 rounded-lg border px-3 py-1.5 text-sm ${
+                          className={`flex-1 rounded-lg border px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 text-xs sm:text-sm ${
                             authMode === "login"
                               ? "border-primary bg-primary/5"
                               : "border-input"
@@ -519,7 +519,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                         </button>
                         <button
                           type="button"
-                          className={`flex-1 rounded-lg border px-3 py-1.5 text-sm ${
+                          className={`flex-1 rounded-lg border px-2 sm:px-2.5 md:px-3 py-1 sm:py-1.5 text-xs sm:text-sm ${
                             authMode === "register"
                               ? "border-primary bg-primary/5"
                               : "border-input"
@@ -533,7 +533,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                         </button>
                       </div>
                       {authMode === "register" && (
-                        <div className="space-y-1.5">
+                        <div className="space-y-1 sm:space-y-1.5">
                           <label className="text-xs text-muted-foreground">
                             {t.username}
                           </label>
@@ -541,12 +541,12 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                             type="text"
                             placeholder={t.username}
                             value={authUsername}
-                            className="h-9 text-sm"
+                            className="h-8 sm:h-9 text-xs sm:text-sm"
                             onChange={(e) => setAuthUsername(e.target.value)}
                           />
                         </div>
                       )}
-                      <div className="space-y-1.5">
+                      <div className="space-y-1 sm:space-y-1.5">
                         <label className="text-xs text-muted-foreground">
                           {t.email}
                         </label>
@@ -554,11 +554,11 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                           type="email"
                           placeholder={t.email}
                           value={authEmail}
-                          className="h-9 text-sm"
+                          className="h-8 sm:h-9 text-xs sm:text-sm"
                           onChange={(e) => setAuthEmail(e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="space-y-1 sm:space-y-1.5">
                         <label className="text-xs text-muted-foreground">
                           {t.password}
                         </label>
@@ -566,7 +566,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                           type="password"
                           placeholder={t.password}
                           value={authPassword}
-                          className="h-9 text-sm"
+                          className="h-8 sm:h-9 text-xs sm:text-sm"
                           onChange={(e) => setAuthPassword(e.target.value)}
                         />
                       </div>
@@ -576,7 +576,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                       <Button
                         type="button"
                         size="sm"
-                        className="w-full"
+                        className="w-full h-8 sm:h-9 text-xs sm:text-sm"
                         disabled={authLoading}
                         onClick={
                           authMode === "login" ? handleRagLogin : handleRagRegister
@@ -594,25 +594,25 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
               )}
 
               {/* 状态提示 */}
-              <div className="flex items-center gap-2 rounded-lg border p-3">
+              <div className="flex items-center gap-1.5 sm:gap-2 rounded-lg border p-2 sm:p-2.5 md:p-3">
                 {hasApiKey ? (
                   <>
-                    <Check className="size-4 shrink-0 text-green-500" />
-                    <span className="text-sm text-green-600 dark:text-green-400">
+                    <Check className="size-3.5 sm:size-4 shrink-0 text-green-500" />
+                    <span className="text-xs sm:text-sm text-green-600 dark:text-green-400">
                       {t.apiKeyConfigured}
                     </span>
                   </>
                 ) : isCustomApi ? (
                   <>
-                    <Check className="size-4 shrink-0 text-blue-500" />
-                    <span className="text-sm text-blue-600 dark:text-blue-400">
+                    <Check className="size-3.5 sm:size-4 shrink-0 text-blue-500" />
+                    <span className="text-xs sm:text-sm text-blue-600 dark:text-blue-400">
                       {t.apiKeyOptional}
                     </span>
                   </>
                 ) : (
                   <>
-                    <AlertCircle className="size-4 shrink-0 text-yellow-500" />
-                    <span className="text-sm text-yellow-600 dark:text-yellow-400">
+                    <AlertCircle className="size-3.5 sm:size-4 shrink-0 text-yellow-500" />
+                    <span className="text-xs sm:text-sm text-yellow-600 dark:text-yellow-400">
                       {t.apiKeyRequired}
                     </span>
                   </>
@@ -632,22 +632,22 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
           )}
         </div>
 
-        <DialogFooter className="flex-shrink-0 flex-col gap-2 border-t px-5 py-4 sm:flex-row">
+        <DialogFooter className="flex-shrink-0 flex-col gap-1.5 sm:gap-2 border-t px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-4 sm:flex-row">
           <Button
             variant="outline"
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto h-8 sm:h-9 md:h-10 text-xs sm:text-sm"
             onClick={() => setOpen(false)}
           >
             {t.cancel}
           </Button>
           <Button
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto h-8 sm:h-9 md:h-10 text-xs sm:text-sm"
             onClick={handleSave}
             disabled={saved}
           >
             {saved ? (
               <>
-                <Check className="size-4" />
+                <Check className="size-3.5 sm:size-4" />
                 {t.saved}
               </>
             ) : (

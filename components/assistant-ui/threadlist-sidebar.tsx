@@ -11,7 +11,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
@@ -97,7 +96,6 @@ export function ThreadListSidebar({
         <SidebarContent className="aui-sidebar-content px-2">
           <ThreadList />
         </SidebarContent>
-        <SidebarRail />
       </Sidebar>
     );
   }
@@ -178,7 +176,6 @@ export function ThreadListSidebar({
           </div>
         )}
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 }

@@ -154,15 +154,15 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8">
+      <div className="w-full max-w-sm space-y-4 sm:space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold">{t.registerTitle}</h1>
-          <p className="mt-1 text-muted-foreground text-sm">{t.ragAccount}</p>
+          <h1 className="text-xl sm:text-2xl font-semibold">{t.registerTitle}</h1>
+          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">{t.ragAccount}</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="text-sm font-medium">
+            <label htmlFor="username" className="text-xs sm:text-sm font-medium">
               {t.username}
             </label>
             <Input
@@ -175,7 +175,7 @@ export default function RegisterPage() {
                 validateUsernameField(e.target.value);
               }}
               onBlur={() => validateUsernameField(username)}
-              className={`h-10 ${usernameError ? "border-destructive" : ""}`}
+              className={`h-9 sm:h-10 text-sm ${usernameError ? "border-destructive" : ""}`}
               aria-invalid={!!usernameError}
               aria-describedby={usernameError ? "username-error" : undefined}
               required
@@ -191,7 +191,7 @@ export default function RegisterPage() {
             )}
           </div>
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">
+            <label htmlFor="email" className="text-xs sm:text-sm font-medium">
               {t.email}
             </label>
             <Input
@@ -204,7 +204,7 @@ export default function RegisterPage() {
                 validateEmailField(e.target.value);
               }}
               onBlur={() => validateEmailField(email)}
-              className={`h-10 ${emailError ? "border-destructive" : ""}`}
+              className={`h-9 sm:h-10 text-sm ${emailError ? "border-destructive" : ""}`}
               aria-invalid={!!emailError}
               aria-describedby={emailError ? "email-error" : undefined}
               required
@@ -216,7 +216,7 @@ export default function RegisterPage() {
             )}
           </div>
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
+            <label htmlFor="password" className="text-xs sm:text-sm font-medium">
               {t.password}
             </label>
             <Input
@@ -228,26 +228,26 @@ export default function RegisterPage() {
                 setPassword(e.target.value);
                 validatePasswordField(e.target.value);
               }}
-              className={`h-10 ${passwordStrength.errors.length > 0 && password ? "border-destructive" : ""}`}
+              className={`h-9 sm:h-10 text-sm ${passwordStrength.errors.length > 0 && password ? "border-destructive" : ""}`}
               required
             />
             {password && <PasswordStrengthIndicator strength={passwordStrength} t={{ lang }} />}
           </div>
           {error && (
-            <p className="text-destructive text-sm" role="alert">
+            <p className="text-destructive text-xs sm:text-sm" role="alert">
               {error}
             </p>
           )}
           <Button
             type="submit"
-            className="w-full"
+            className="w-full h-9 sm:h-10"
             disabled={loading || !passwordStrength.valid}
             aria-disabled={loading || !passwordStrength.valid}
           >
             {loading ? "..." : t.register}
           </Button>
         </form>
-        <p className="text-center text-muted-foreground text-sm">
+        <p className="text-center text-muted-foreground text-xs sm:text-sm">
           {lang === "zh" ? "已有账号？" : "Already have an account?"}{" "}
           <Link href="/login" className="text-primary underline underline-offset-2">
             {t.login}

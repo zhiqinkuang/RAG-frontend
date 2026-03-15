@@ -270,7 +270,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
         if (res.code === ErrorCodes.DOC_DUPLICATE) {
           toast.warning(res.message, { duration: 4000 });
         } else if (res.code === ErrorCodes.FILE_TOO_LARGE) {
-          toast.error("文件大小超过限制（最大 20MB）");
+          toast.error("文件大小超过限制（最大 50MB）");
         } else if (res.code === ErrorCodes.FILE_TYPE_INVALID) {
           toast.error("不支持的文件类型，仅支持 PDF、TXT、MD、DOCX");
         } else {
@@ -348,40 +348,40 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* 工具栏 */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">知识库管理</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs sm:text-sm font-medium">知识库管理</h3>
         <Button
           size="sm"
           variant="outline"
           onClick={() => setShowCreateKb(true)}
-          className="h-8"
+          className="h-7 sm:h-8 px-2 sm:px-3"
         >
-          <Plus className="mr-1 size-4" />
-          新建
+          <Plus className="mr-1 size-3.5 sm:size-4" />
+          <span className="hidden xs:inline">新建</span>
         </Button>
       </div>
 
       {/* 创建知识库表单 */}
       {showCreateKb && (
-        <div className="space-y-3 rounded-lg border p-4">
-          <div className="space-y-1.5">
+        <div className="space-y-2.5 sm:space-y-3 rounded-lg border p-2.5 sm:p-3 md:p-4">
+          <div className="space-y-1">
             <label className="text-xs font-medium">名称 *</label>
             <Input
               value={newKbName}
               onChange={(e) => setNewKbName(e.target.value)}
               placeholder="输入知识库名称"
-              className="h-9"
+              className="h-8 sm:h-9 text-xs sm:text-sm"
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="text-xs font-medium">描述</label>
             <Input
               value={newKbDesc}
               onChange={(e) => setNewKbDesc(e.target.value)}
               placeholder="可选描述"
-              className="h-9"
+              className="h-8 sm:h-9 text-xs sm:text-sm"
             />
           </div>
           <div className="flex gap-2">
@@ -389,9 +389,9 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
               size="sm"
               onClick={handleCreateKb}
               disabled={creating || !newKbName.trim()}
-              className="flex-1"
+              className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
             >
-              {creating ? <Loader2 className="size-4 animate-spin" /> : "创建"}
+              {creating ? <Loader2 className="size-3.5 sm:size-4 animate-spin" /> : "创建"}
             </Button>
             <Button
               size="sm"
@@ -401,7 +401,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                 setNewKbName("");
                 setNewKbDesc("");
               }}
-              className="flex-1"
+              className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
             >
               取消
             </Button>
@@ -412,232 +412,235 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
       {/* 知识库列表 */}
       <div className="space-y-2">
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center py-6 sm:py-8">
+            <Loader2 className="size-5 sm:size-6 animate-spin text-muted-foreground" />
           </div>
         ) : knowledgeBases.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <FolderOpen className="mb-2 size-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">暂无知识库</p>
+          <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-center">
+            <FolderOpen className="mb-2 size-6 sm:size-8 text-muted-foreground" />
+            <p className="text-xs sm:text-sm text-muted-foreground">暂无知识库</p>
             <p className="text-xs text-muted-foreground">点击上方"新建"创建</p>
           </div>
         ) : (
-          knowledgeBases.map((kb) => (
-            <div
-              key={kb.ID}
-              className="rounded-lg border overflow-hidden"
-            >
-              {/* 知识库头部 */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+            {knowledgeBases.map((kb) => (
               <div
-                className={`flex items-center gap-2 p-3 cursor-pointer hover:bg-muted/50 ${
-                  selectedKbId === kb.ID ? "bg-primary/5" : ""
-                }`}
-                onClick={() => toggleKb(kb.ID)}
+                key={kb.ID}
+                className="rounded-lg border overflow-hidden"
               >
-                <button
-                  type="button"
-                  className="shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleKb(kb.ID);
-                  }}
+                {/* 知识库头部 */}
+                <div
+                  className={`flex items-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 md:p-3 cursor-pointer hover:bg-muted/50 ${
+                    selectedKbId === kb.ID ? "bg-primary/5" : ""
+                  }`}
+                  onClick={() => toggleKb(kb.ID)}
                 >
-                  {expandedKb === kb.ID ? (
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  )}
-                </button>
-                <Database className="size-4 shrink-0 text-primary" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium">{kb.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {kb.doc_count} 文档
-                    </span>
+                  <button
+                    type="button"
+                    className="shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleKb(kb.ID);
+                    }}
+                  >
+                    {expandedKb === kb.ID ? (
+                      <ChevronDown className="size-3.5 sm:size-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="size-3.5 sm:size-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  <Database className="size-3.5 sm:size-4 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <span className="truncate text-xs sm:text-sm font-medium">{kb.name}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {kb.doc_count} 文档
+                      </span>
+                    </div>
+                    {kb.description && (
+                      <p className="truncate text-xs text-muted-foreground hidden sm:block">
+                        {kb.description}
+                      </p>
+                    )}
                   </div>
-                  {kb.description && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {kb.description}
-                    </p>
-                  )}
+                  <div className="flex shrink-0 gap-0.5 sm:gap-1">
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectKb(kb.ID);
+                      }}
+                      title="选择此知识库"
+                      className={`size-7 sm:size-8 ${selectedKbId === kb.ID ? "text-primary" : ""}`}
+                    >
+                      <CheckCircle className="size-3.5 sm:size-4" />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteKb(kb.ID);
+                      }}
+                      className="size-7 sm:size-8 text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5 sm:size-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectKb(kb.ID);
-                    }}
-                    title="选择此知识库"
-                    className={selectedKbId === kb.ID ? "text-primary" : ""}
-                  >
-                    <CheckCircle className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteKb(kb.ID);
-                    }}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              </div>
 
-              {/* 文档列表 */}
-              {expandedKb === kb.ID && (
-                <div className="border-t bg-muted/30">
-                  {/* 上传区域 */}
-                  <div className="border-b p-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        accept=".pdf,.txt,.md,.docx"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="h-8"
-                      >
-                        <Upload className="mr-1 size-4" />
-                        选择文件
-                      </Button>
-                      {uploadFiles.length > 0 && (
+                {/* 文档列表 */}
+                {expandedKb === kb.ID && (
+                  <div className="border-t bg-muted/30">
+                    {/* 上传区域 */}
+                    <div className="border-b p-2 sm:p-2.5 md:p-3">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          multiple
+                          accept=".pdf,.txt,.md,.docx"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                        />
                         <Button
                           size="sm"
-                          onClick={handleUpload}
-                          disabled={uploading}
-                          className="h-8"
+                          variant="outline"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-7 sm:h-8 w-full sm:w-auto text-xs"
                         >
-                          {uploading ? (
-                            <Loader2 className="size-4 animate-spin" />
-                          ) : (
-                            `上传 ${uploadFiles.length} 个文件`
-                          )}
+                          <Upload className="mr-1 size-3.5 sm:size-4" />
+                          选择文件
                         </Button>
-                      )}
-                    </div>
-                    {/* 待上传文件列表 */}
-                    {uploadFiles.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {uploadFiles.map((file, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-2 rounded bg-background p-1.5 text-xs"
+                        {uploadFiles.length > 0 && (
+                          <Button
+                            size="sm"
+                            onClick={handleUpload}
+                            disabled={uploading}
+                            className="h-7 sm:h-8 w-full sm:w-auto text-xs"
                           >
-                            <FileText className="size-3 shrink-0" />
-                            <span className="flex-1 truncate">{file.name}</span>
-                            <span className="text-muted-foreground">
-                              {formatFileSize(file.size)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => removeFile(idx)}
-                              className="text-muted-foreground hover:text-foreground"
+                            {uploading ? (
+                              <Loader2 className="size-3.5 sm:size-4 animate-spin" />
+                            ) : (
+                              `上传 ${uploadFiles.length} 个文件`
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                      {/* 待上传文件列表 */}
+                      {uploadFiles.length > 0 && (
+                        <div className="mt-1.5 sm:mt-2 space-y-1">
+                          {uploadFiles.map((file, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-1.5 sm:gap-2 rounded bg-background p-1 sm:p-1.5 text-xs"
                             >
-                              <X className="size-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      支持 PDF、TXT、MD、DOCX 格式
-                    </p>
-                  </div>
-
-                  {/* 文档列表 */}
-                  <div className="max-h-60 overflow-y-auto">
-                    {docLoading ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="size-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : documents.length === 0 ? (
-                      <div className="py-4 text-center text-xs text-muted-foreground">
-                        暂无文档，上传文件开始
-                      </div>
-                    ) : (
-                      <div className="divide-y">
-                        {documents.map((doc) => (
-                          <div
-                            key={doc.ID}
-                            className="flex items-center gap-2 p-2 text-xs"
-                          >
-                            <FileText className="size-4 shrink-0 text-muted-foreground" />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="truncate font-medium">
-                                  {doc.file_name}
-                                </span>
-                                <span className={getDocStatusColor(doc.status, doc.progress?.percent)}>
-                                  {getDocStatusText(doc.status, doc.progress?.percent)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <span>{formatFileSize(doc.file_size)}</span>
-                                <span>•</span>
-                                <span>{doc.chunk_count} 分块</span>
-                              </div>
-                              {/* 进度条 - 仅在处理中(status=1)且进度未达100%时显示 */}
-                              {doc.status === 1 && doc.progress && doc.progress.percent < 100 && (
-                                <div className="mt-1">
-                                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-0.5">
-                                    <span>处理中</span>
-                                    <span>{doc.progress.percent}%</span>
-                                  </div>
-                                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                    <div 
-                                      className="h-full bg-primary transition-all duration-300 rounded-full"
-                                      style={{ width: `${Math.min(doc.progress.percent, 100)}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                              {doc.error_msg && (
-                                <p className="truncate text-red-500">
-                                  {doc.error_msg}
-                                </p>
-                              )}
+                              <FileText className="size-3 shrink-0" />
+                              <span className="flex-1 truncate">{file.name}</span>
+                              <span className="text-muted-foreground shrink-0 hidden sm:inline">
+                                {formatFileSize(file.size)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeFile(idx)}
+                                className="text-muted-foreground hover:text-foreground shrink-0"
+                              >
+                                <X className="size-3" />
+                              </button>
                             </div>
-                            <div className="flex shrink-0 gap-1">
-                              {doc.status !== 1 && (
+                          ))}
+                        </div>
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        支持 PDF、TXT、MD、DOCX 格式
+                      </p>
+                    </div>
+
+                    {/* 文档列表 */}
+                    <div className="max-h-48 sm:max-h-60 overflow-y-auto">
+                      {docLoading ? (
+                        <div className="flex items-center justify-center py-3 sm:py-4">
+                          <Loader2 className="size-4 sm:size-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : documents.length === 0 ? (
+                        <div className="py-3 sm:py-4 text-center text-xs text-muted-foreground">
+                          暂无文档，上传文件开始
+                        </div>
+                      ) : (
+                        <div className="divide-y">
+                          {documents.map((doc) => (
+                            <div
+                              key={doc.ID}
+                              className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 text-xs"
+                            >
+                              <FileText className="size-3.5 sm:size-4 shrink-0 text-muted-foreground" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1 sm:gap-2">
+                                  <span className="truncate font-medium text-xs sm:text-sm">
+                                    {doc.file_name}
+                                  </span>
+                                  <span className={`shrink-0 text-xs ${getDocStatusColor(doc.status, doc.progress?.percent)}`}>
+                                    {getDocStatusText(doc.status, doc.progress?.percent)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground text-xs">
+                                  <span>{formatFileSize(doc.file_size)}</span>
+                                  <span className="hidden sm:inline">•</span>
+                                  <span className="hidden sm:inline">{doc.chunk_count} 分块</span>
+                                </div>
+                                {/* 进度条 - 仅在处理中(status=1)且进度未达100%时显示 */}
+                                {doc.status === 1 && doc.progress && doc.progress.percent < 100 && (
+                                  <div className="mt-1">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-0.5">
+                                      <span>处理中</span>
+                                      <span>{doc.progress.percent}%</span>
+                                    </div>
+                                    <div className="h-1 sm:h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                      <div 
+                                        className="h-full bg-primary transition-all duration-300 rounded-full"
+                                        style={{ width: `${Math.min(doc.progress.percent, 100)}%` }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                {doc.error_msg && (
+                                  <p className="truncate text-red-500 text-xs">
+                                    {doc.error_msg}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex shrink-0 gap-0.5 sm:gap-1">
+                                {doc.status !== 1 && (
+                                  <Button
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    onClick={() => handleReprocess(doc.ID)}
+                                    title="重新处理"
+                                    className="size-6 sm:size-7"
+                                  >
+                                    <RefreshCw className="size-3" />
+                                  </Button>
+                                )}
                                 <Button
                                   size="icon-sm"
                                   variant="ghost"
-                                  onClick={() => handleReprocess(doc.ID)}
-                                  title="重新处理"
+                                  onClick={() => handleDeleteDoc(doc.ID)}
+                                  className="size-6 sm:size-7 text-destructive hover:text-destructive"
                                 >
-                                  <RefreshCw className="size-3" />
+                                  <Trash2 className="size-3" />
                                 </Button>
-                              )}
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                onClick={() => handleDeleteDoc(doc.ID)}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="size-3" />
-                              </Button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

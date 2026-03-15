@@ -174,6 +174,53 @@ function getSourceStyle(source?: PaperSource): { bg: string; text: string; label
   return { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", label: "arXiv" };
 }
 
+// 高亮关键词
+function highlightText(text: string, keywords: string[]): React.ReactNode {
+  if (!keywords.length || !text) return text;
+  
+  // 过滤空关键词并按长度降序排序（优先匹配长词）
+  const validKeywords = keywords.filter(k => k.trim()).sort((a, b) => b.length - a.length);
+  if (!validKeywords.length) return text;
+  
+  // 构建正则表达式，匹配任意关键词（不区分大小写）
+  const regex = new RegExp(`(${validKeywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+  
+  const parts = text.split(regex);
+  
+  return parts.map((part, index) => {
+    // 检查是否匹配关键词（不区分大小写）
+    const isMatch = validKeywords.some(k => k.toLowerCase() === part.toLowerCase());
+    if (isMatch) {
+      return (
+        <mark key={index} className="bg-yellow-200 dark:bg-yellow-800/50 text-inherit rounded px-0.5">
+          {part}
+        </mark>
+      );
+    }
+    return part;
+  });
+}
+
+// 从搜索词提取关键词
+function extractKeywords(searchQuery: string, extractedInfo?: ExtractedInfo | null): string[] {
+  const keywords: string[] = [];
+  
+  // 添加智能搜索提取的关键词
+  if (extractedInfo?.keywords?.length) {
+    keywords.push(...extractedInfo.keywords);
+  }
+  
+  // 添加搜索词中的关键词
+  if (searchQuery.trim()) {
+    // 分词：按空格、逗号、顿号分割
+    const words = searchQuery.trim().split(/[\s,，、]+/).filter(w => w.length > 1);
+    keywords.push(...words);
+  }
+  
+  // 去重
+  return [...new Set(keywords.map(k => k.trim()).filter(k => k.length > 1))];
+}
+
 export function PaperSearch() {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -479,6 +526,9 @@ export function PaperSearch() {
 
   // 获取排序后的论文（先去重再排序）
   const sortedPapers = getSortedPapers(deduplicatePapers(papers));
+  
+  // 提取关键词用于高亮
+  const highlightKeywords = extractKeywords(query, extractedInfo);
 
   // 搜索模式切换
   const handleModeChange = (mode: SearchMode) => {
@@ -518,6 +568,9 @@ export function PaperSearch() {
       return;
     }
     
+    // 隐藏历史记录
+    setShowHistory(false);
+    
     // 清空之前的提取结果
     setExtractedInfo(null);
     
@@ -530,60 +583,60 @@ export function PaperSearch() {
       {/* 两行头部布局 */}
       <div className="shrink-0 border-b relative">
         {/* 第一行：返回按钮 + 标题 + 知识库名称 */}
-        <div className="h-12 flex items-center justify-between px-4 border-b">
-          <div className="flex items-center gap-2">
+        <div className="h-12 sm:h-14 flex items-center justify-between px-2 sm:px-4 border-b">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
             {/* 返回按钮 */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => router.push("/")}
               title={t.backToChat || "返回聊天"}
-              className="h-9 w-9 shrink-0"
+              className="h-8 w-8 sm:h-9 sm:w-9 shrink-0"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             {/* 标题 */}
-            <h1 className="text-lg font-semibold">
+            <h1 className="text-sm sm:text-base md:text-lg font-semibold truncate">
               {t.paperSearch || "论文搜索"}
             </h1>
           </div>
-          {/* 右侧知识库名称 */}
+          {/* 右侧知识库名称 - 平板及以上显示 */}
           {selectedKBName && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <div className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground shrink-0">
               <Database className="h-4 w-4" />
-              <span>{selectedKBName}</span>
+              <span className="truncate max-w-32 lg:max-w-48">{selectedKBName}</span>
             </div>
           )}
         </div>
 
         {/* 第二行：搜索模式 + 搜索框 + 知识库选择 */}
-        <div className="h-14 flex items-center gap-3 px-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-2.5 lg:py-0 lg:h-14">
           {/* 搜索模式切换 - 简化为两种模式 */}
           <div className="flex gap-1 shrink-0 p-1 bg-muted/50 rounded-lg border">
             <Button
               variant={searchMode === "smart" ? "default" : "ghost"}
               size="sm"
               onClick={() => handleModeChange("smart")}
-              className={`h-7 px-2.5 ${searchMode === "smart" ? "shadow-sm" : "hover:bg-background/80"}`}
+              className={`h-7 px-2 sm:px-2.5 ${searchMode === "smart" ? "shadow-sm" : "hover:bg-background/80"}`}
               title={t.smartSearch || "智能搜索"}
             >
-              <Sparkles className="h-3.5 w-3.5 mr-1" />
-              <span className="text-xs">{lang === "zh" ? "智能搜索" : "Smart"}</span>
+              <Sparkles className="h-3.5 w-3.5 sm:mr-1" />
+              <span className="text-xs hidden md:inline">{lang === "zh" ? "智能搜索" : "Smart"}</span>
             </Button>
             <Button
               variant={searchMode === "keyword" ? "default" : "ghost"}
               size="sm"
               onClick={() => handleModeChange("keyword")}
-              className={`h-7 px-2.5 ${searchMode === "keyword" ? "shadow-sm" : "hover:bg-background/80"}`}
+              className={`h-7 px-2 sm:px-2.5 ${searchMode === "keyword" ? "shadow-sm" : "hover:bg-background/80"}`}
               title={t.keywordSearch || "关键词搜索"}
             >
-              <Hash className="h-3.5 w-3.5 mr-1" />
-              <span className="text-xs">{lang === "zh" ? "关键词" : "Keyword"}</span>
+              <Hash className="h-3.5 w-3.5 sm:mr-1" />
+              <span className="text-xs hidden md:inline">{lang === "zh" ? "关键词" : "Keyword"}</span>
             </Button>
           </div>
 
-          {/* 分隔线 */}
-          <div className="w-px h-8 bg-border shrink-0" />
+          {/* 分隔线 - 桌面端显示 */}
+          <div className="hidden lg:block w-px h-8 bg-border shrink-0" />
 
           {/* 搜索输入框 - 智能模式使用统一输入框 */}
           <div className="relative flex-1 min-w-0">
@@ -601,7 +654,7 @@ export function PaperSearch() {
                 }}
                 onFocus={() => setShowHistory(true)}
                 onBlur={() => setTimeout(() => setShowHistory(false), 200)}
-                className="w-full h-[80px] px-3 py-2 text-sm border-2 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background"
+                className="w-full h-[50px] sm:h-[60px] md:h-[80px] px-3 py-2 text-sm border-2 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary bg-background"
                 disabled={loading}
               />
             ) : (
@@ -615,7 +668,7 @@ export function PaperSearch() {
                 onKeyDown={(e) => e.key === "Enter" && handleUnifiedSearch()}
                 onFocus={() => setShowHistory(true)}
                 onBlur={() => setTimeout(() => setShowHistory(false), 200)}
-                className="w-full h-9 border-2 focus:border-primary"
+                className="w-full h-9 sm:h-10 border-2 focus:border-primary"
                 disabled={loading}
               />
             )}
@@ -626,7 +679,7 @@ export function PaperSearch() {
                 {inputType.type === "keyword" && <Hash className="h-3 w-3" />}
                 {inputType.type === "natural" && <MessageSquare className="h-3 w-3" />}
                 {inputType.type === "smart" && <Sparkles className="h-3 w-3" />}
-                <span>{getModeLabel(inputType.type, lang)}</span>
+                <span className="hidden lg:inline">{getModeLabel(inputType.type, lang)}</span>
               </div>
             )}
             
@@ -639,52 +692,76 @@ export function PaperSearch() {
             )}
           </div>
 
-          {/* 搜索按钮 */}
-          <Button onClick={handleUnifiedSearch} disabled={loading} className="h-9 shrink-0 px-4">
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
-          </Button>
-          
-          {/* 强制刷新按钮 */}
-          {papers.length > 0 && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => performSearch(query, true, false)}
-              disabled={loading}
-              title={lang === "zh" ? "强制刷新（忽略缓存）" : "Force refresh (ignore cache)"}
-              className="h-9 w-9 shrink-0"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          {/* 按钮组 */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* 搜索按钮 */}
+            <Button onClick={handleUnifiedSearch} disabled={loading} className="h-9 px-3 sm:px-4 flex-1 sm:flex-none">
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+              <span className="sm:hidden ml-2">{lang === "zh" ? "搜索" : "Search"}</span>
             </Button>
-          )}
+            
+            {/* 强制刷新按钮 - 桌面端显示 */}
+            {papers.length > 0 && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => performSearch(query, true, false)}
+                disabled={loading}
+                title={lang === "zh" ? "强制刷新（忽略缓存）" : "Force refresh (ignore cache)"}
+                className="hidden md:flex h-9 w-9 shrink-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              </Button>
+            )}
 
-          {/* 分隔线 */}
-          <div className="w-px h-8 bg-border shrink-0" />
+            {/* 分隔线 - 桌面端显示 */}
+            <div className="hidden lg:block w-px h-8 bg-border shrink-0" />
 
-          {/* 知识库选择 - 使用独特的卡片样式 */}
-          {knowledgeBases.length > 0 && (
-            <div className="flex items-center gap-2 shrink-0 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            {/* 知识库选择 - 使用独特的卡片样式，桌面端显示 */}
+            {knowledgeBases.length > 0 && (
+              <div className="hidden md:flex items-center gap-2 shrink-0 px-2 sm:px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <Database className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <select
+                  className="h-7 bg-transparent text-sm font-medium text-blue-700 dark:text-blue-300 focus:outline-none cursor-pointer max-w-24 lg:max-w-none"
+                  value={selectedKB}
+                  onChange={(e) => setSelectedKB(e.target.value)}
+                >
+                  {knowledgeBases.map((kb) => (
+                    <option key={kb.ID} value={String(kb.ID)} className="bg-background text-foreground text-sm">
+                      {kb.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 移动端知识库选择 - 显示在第三行 */}
+        {knowledgeBases.length > 0 && (
+          <div className="md:hidden px-2 pb-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <Database className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
               <select
-                className="h-7 bg-transparent text-sm font-medium text-blue-700 dark:text-blue-300 focus:outline-none cursor-pointer"
+                className="flex-1 h-8 bg-transparent text-base font-medium text-blue-700 dark:text-blue-300 focus:outline-none cursor-pointer"
                 value={selectedKB}
                 onChange={(e) => setSelectedKB(e.target.value)}
               >
                 {knowledgeBases.map((kb) => (
-                  <option key={kb.ID} value={String(kb.ID)} className="bg-background text-foreground">
+                  <option key={kb.ID} value={String(kb.ID)} className="bg-background text-foreground text-base">
                     {kb.name}
                   </option>
                 ))}
               </select>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* 搜索历史下拉 */}
+        {/* 搜索历史下拉 - 输入框获得焦点时显示 */}
         {showHistory && searchHistory.length > 0 && (
           <div className="absolute z-10 mt-1 w-full max-w-md bg-popover border rounded-md shadow-lg left-[200px]">
             <div className="flex items-center justify-between px-3 py-2 border-b">
@@ -764,20 +841,20 @@ export function PaperSearch() {
 
       {/* 热门搜索/示例查询（仅在无结果时显示） */}
       {papers.length === 0 && !loading && (
-        <div className="px-4 py-3 border-b bg-muted/20">
+        <div className="px-2 sm:px-4 py-2 sm:py-3 border-b bg-muted/20">
           {searchMode === "keyword" ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+            <div className="flex items-start gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 pt-0.5">
                 <Flame className="h-3.5 w-3.5 text-orange-500" />
-                {t.hotSearches || (lang === "zh" ? "热门搜索" : "Hot Searches")}:
+                <span className="hidden xs:inline">{t.hotSearches || (lang === "zh" ? "热门搜索" : "Hot Searches")}:</span>
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {hotSearches.slice(0, 6).map((hot, index) => (
+                {hotSearches.slice(0, 4).map((hot, index) => (
                   <Button
                     key={index}
                     variant="outline"
                     size="sm"
-                    className="text-xs h-7"
+                    className="text-xs h-7 px-2"
                     onClick={() => handleHotSearchClick(hot)}
                   >
                     {hot}
@@ -788,18 +865,18 @@ export function PaperSearch() {
           ) : (
             <div className="space-y-2">
               {/* 热门搜索 */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+              <div className="flex items-start gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0 pt-0.5">
                   <Flame className="h-3.5 w-3.5 text-orange-500" />
-                  {t.hotSearches || (lang === "zh" ? "热门搜索" : "Hot Searches")}:
+                  <span className="hidden xs:inline">{t.hotSearches || (lang === "zh" ? "热门搜索" : "Hot Searches")}:</span>
                 </span>
                 <div className="flex flex-wrap gap-1.5">
-                  {hotSearches.slice(0, 4).map((hot, index) => (
+                  {hotSearches.slice(0, 3).map((hot, index) => (
                     <Button
                       key={index}
                       variant="outline"
                       size="sm"
-                      className="text-xs h-7"
+                      className="text-xs h-7 px-2"
                       onClick={() => handleHotSearchClick(hot)}
                     >
                       {hot}
@@ -807,9 +884,9 @@ export function PaperSearch() {
                   ))}
                 </div>
               </div>
-              {/* 示例查询 */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
+              {/* 示例查询 - 平板及以上显示 */}
+              <div className="hidden md:flex items-start gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1 pt-0.5">
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
                   {t.exampleQueries || (lang === "zh" ? "示例查询" : "Examples")}:
                 </span>
@@ -872,7 +949,7 @@ export function PaperSearch() {
       )}
 
       {/* 搜索结果 */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-2 sm:p-4">
         {papers.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <FileText className="h-12 w-12 mb-4" />
@@ -889,14 +966,20 @@ export function PaperSearch() {
         ) : (
           <div className="space-y-4">
             {/* 排序和来源统计 */}
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
+              {/* 来源统计 */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded">
+                  arXiv: {papers.length}
+                </span>
+              </div>
               {/* 排序选择器 */}
               <div className="flex items-center gap-2">
-                <label className="text-xs text-muted-foreground">
+                <label className="text-xs text-muted-foreground hidden sm:inline">
                   {lang === "zh" ? "排序" : "Sort"}:
                 </label>
                 <select
-                  className="h-7 rounded-md border bg-background px-2 text-xs"
+                  className="h-8 rounded-md border bg-background px-2 text-base sm:text-xs"
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value as SortOrder)}
                 >
@@ -905,114 +988,112 @@ export function PaperSearch() {
                   <option value="oldest">{lang === "zh" ? "最早优先" : "Oldest"}</option>
                 </select>
               </div>
-              {/* 来源统计 */}
-              <div className="flex items-center gap-2 text-xs">
-                <span className="flex items-center gap-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded">
-                  arXiv: {papers.length}
-                </span>
-              </div>
             </div>
 
-            {/* 论文列表 */}
-            {sortedPapers.map((paper) => {
-              const sourceStyle = getSourceStyle(paper.source);
-              return (
-                <div
-                  key={paper.arxiv_id}
-                  className={`border rounded-lg p-4 transition-colors ${
-                    downloadStatus.arxivId === paper.arxiv_id && downloadStatus.phase !== "idle"
-                      ? "bg-primary/5 border-primary/30"
-                      : "hover:bg-accent/50"
-                  }`}
-                >
-                  {/* 标题和来源标签 */}
-                  <div className="flex items-start gap-2 mb-2">
-                    <h3 className="text-lg font-semibold leading-tight flex-1">
-                      {paper.title}
-                    </h3>
-                    <span className={`shrink-0 text-xs px-2 py-0.5 rounded ${sourceStyle.bg} ${sourceStyle.text}`}>
-                      {sourceStyle.label}
-                    </span>
-                  </div>
-                  
-                  {/* 元信息 */}
-                  <div className="flex flex-wrap gap-2 text-sm text-muted-foreground mb-3">
-                    <span>{formatAuthors(paper.authors, 3)}</span>
-                    <span>·</span>
-                    <span>{formatDate(paper.published)}</span>
-                    {paper.categories.length > 0 && (
-                      <>
-                        <span>·</span>
-                        <span className="text-xs bg-secondary px-1.5 py-0.5 rounded">
-                          {formatCategories(paper.categories)}
-                        </span>
-                      </>
-                    )}
-                  </div>
+            {/* 论文列表 - 响应式网格布局：移动端单列，平板双列，桌面三列 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+              {sortedPapers.map((paper) => {
+                const sourceStyle = getSourceStyle(paper.source);
+                return (
+                  <div
+                    key={paper.arxiv_id}
+                    className={`border rounded-lg p-2.5 sm:p-3 lg:p-4 transition-colors ${
+                      downloadStatus.arxivId === paper.arxiv_id && downloadStatus.phase !== "idle"
+                        ? "bg-primary/5 border-primary/30"
+                        : "hover:bg-accent/50"
+                    }`}
+                  >
+                    {/* 标题和来源标签 */}
+                    <div className="flex items-start gap-2 mb-1.5 sm:mb-2">
+                      <h3 className="text-sm sm:text-base lg:text-lg font-semibold leading-tight flex-1 line-clamp-2">
+                        {highlightText(paper.title, highlightKeywords)}
+                      </h3>
+                      <span className={`shrink-0 text-xs px-1.5 sm:px-2 py-0.5 rounded ${sourceStyle.bg} ${sourceStyle.text}`}>
+                        {sourceStyle.label}
+                      </span>
+                    </div>
+                    
+                    {/* 元信息 */}
+                    <div className="flex flex-wrap gap-1 sm:gap-2 text-xs text-muted-foreground mb-2 sm:mb-3">
+                      <span className="truncate max-w-24 sm:max-w-32 md:max-w-none">{formatAuthors(paper.authors, 2)}</span>
+                      <span>·</span>
+                      <span>{formatDate(paper.published)}</span>
+                      {paper.categories.length > 0 && (
+                        <>
+                          <span className="hidden sm:inline">·</span>
+                          <span className="hidden sm:inline text-xs bg-secondary px-1.5 py-0.5 rounded truncate max-w-20 md:max-w-24">
+                            {formatCategories(paper.categories)}
+                          </span>
+                        </>
+                      )}
+                    </div>
 
-                  {/* 摘要 */}
-                  <div className="mb-3">
-                    <p
-                      className={`text-sm text-muted-foreground ${
-                        !expandedAbstracts.has(paper.arxiv_id) ? "line-clamp-3" : ""
-                      }`}
-                    >
-                      {paper.abstract}
-                    </p>
-                    {paper.abstract.length > 200 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-1 h-auto p-0 text-primary"
-                        onClick={() => toggleAbstract(paper.arxiv_id)}
+                    {/* 摘要 */}
+                    <div className="mb-2 sm:mb-3">
+                      <p
+                        className={`text-xs sm:text-sm text-muted-foreground ${
+                          !expandedAbstracts.has(paper.arxiv_id) ? "line-clamp-2 lg:line-clamp-3" : ""
+                        }`}
                       >
-                        {expandedAbstracts.has(paper.arxiv_id) ? (
+                        {highlightText(paper.abstract, highlightKeywords)}
+                      </p>
+                      {paper.abstract.length > 200 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-1 h-auto p-0 text-primary text-xs"
+                          onClick={() => toggleAbstract(paper.arxiv_id)}
+                        >
+                          {expandedAbstracts.has(paper.arxiv_id) ? (
+                            <>
+                              {t.collapseAbstract || "收起"} <ChevronUp className="h-3 w-3 ml-1" />
+                            </>
+                          ) : (
+                            <>
+                              {t.expandAbstract || "展开"} <ChevronDown className="h-3 w-3 ml-1" />
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* 操作按钮 */}
+                    <div className="flex gap-1.5 sm:gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleDownload(paper)}
+                        disabled={isDownloading(paper.arxiv_id) || downloadStatus.arxivId === paper.arxiv_id}
+                        className={`flex-1 sm:flex-none text-xs ${downloadStatus.phase === "completed" && downloadStatus.arxivId === paper.arxiv_id ? "bg-green-600 hover:bg-green-700" : ""}`}
+                      >
+                        {downloadStatus.arxivId === paper.arxiv_id ? (
                           <>
-                            {t.collapseAbstract || "收起"} <ChevronUp className="h-4 w-4 ml-1" />
+                            <div className={PHASE_CONFIG[downloadStatus.phase].color}>
+                              {PHASE_CONFIG[downloadStatus.phase].icon}
+                            </div>
+                            <span className="ml-1.5 hidden sm:inline">{getPhaseText(downloadStatus.phase)}</span>
                           </>
                         ) : (
                           <>
-                            {t.expandAbstract || "展开"} <ChevronDown className="h-4 w-4 ml-1" />
+                            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span className="ml-1.5 hidden sm:inline">{t.downloadToKB || "下载到知识库"}</span>
+                            <span className="ml-1.5 sm:hidden">{lang === "zh" ? "下载" : "DL"}</span>
                           </>
                         )}
                       </Button>
-                    )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(paper.abs_url, "_blank")}
+                        className="text-xs px-2 sm:px-3"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        <span className="ml-1.5 hidden sm:inline">arXiv</span>
+                      </Button>
+                    </div>
                   </div>
-
-                  {/* 操作按钮 */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleDownload(paper)}
-                      disabled={isDownloading(paper.arxiv_id) || downloadStatus.arxivId === paper.arxiv_id}
-                      className={downloadStatus.phase === "completed" && downloadStatus.arxivId === paper.arxiv_id ? "bg-green-600 hover:bg-green-700" : ""}
-                    >
-                      {downloadStatus.arxivId === paper.arxiv_id ? (
-                        <>
-                          <div className={PHASE_CONFIG[downloadStatus.phase].color}>
-                            {PHASE_CONFIG[downloadStatus.phase].icon}
-                          </div>
-                          <span className="ml-2">{getPhaseText(downloadStatus.phase)}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Download className="h-4 w-4" />
-                          <span className="ml-2">{t.downloadToKB || "下载到知识库"}</span>
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => window.open(paper.abs_url, "_blank")}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      <span className="ml-2">arXiv</span>
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
 
             {/* 加载更多按钮 */}
             {hasMore && (
