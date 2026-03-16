@@ -345,18 +345,12 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
               <div className="space-y-1.5 sm:space-y-2">
                 <label className="text-xs sm:text-sm font-medium">{t.provider}</label>
                 <select
-                  className="flex h-8 sm:h-9 md:h-10 w-full appearance-none rounded-lg border border-input bg-background pl-2.5 sm:pl-3 pr-8 sm:pr-10 py-1.5 sm:py-2 text-base sm:text-sm touch-manipulation"
+                  className="flex h-8 sm:h-9 md:h-10 w-full appearance-none rounded-lg border border-input bg-background pl-2.5 sm:pl-3 pr-8 sm:pr-10 py-1.5 sm:py-2 text-base sm:text-sm touch-manipulation bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2716%27%20height%3D%2716%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%236b7280%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27m6%209%206%206%206-6%27%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[length:1rem] bg-[right_0.75rem_center]"
                   value={settings.provider}
                   onChange={(e) =>
                     handleProviderChange(e.target.value as ProviderId)
                   }
                   aria-label={t.providerAria}
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "right 0.5rem sm:0.75rem center",
-                    backgroundSize: "0.875rem sm:1rem",
-                  }}
                 >
                   {PROVIDERS.map((p) => (
                     <option key={p.id} value={p.id} className="text-base sm:text-sm">
