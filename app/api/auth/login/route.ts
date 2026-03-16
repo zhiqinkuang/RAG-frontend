@@ -39,7 +39,12 @@ function getClientIP(req: NextRequest): string {
 function logRequest(action: string, info: { email?: string; ip?: string; success: boolean }) {
   const timestamp = new Date().toISOString();
   const maskedEmail = info.email ? info.email.replace(/(.{2}).*(@.*)/, "$1***$2") : "unknown";
-  const maskedIP = info.ip ? info.ip.replace(/(\d+\.\d+)\.\d+\.\d+/, "$1.***.***") : "unknown";
+  // 支持 IPv4 和 IPv6 地址脱敏
+  const maskedIP = info.ip
+    ? info.ip.includes(':')
+      ? info.ip.split(':').slice(0, 2).join(':') + ':...'
+      : info.ip.replace(/(\d+\.\d+)\.\d+\.\d+/, "$1.***.***")
+    : "unknown";
   console.log(`[${timestamp}] ${action}: email=${maskedEmail}, ip=${maskedIP}, success=${info.success}`);
 }
 
