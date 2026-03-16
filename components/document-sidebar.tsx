@@ -19,12 +19,14 @@ interface DocumentSidebarProps {
   knowledgeBaseId: number | undefined;
   selectedDocIds: number[];
   onSelectionChange: (docIds: number[]) => void;
+  refreshKey?: number; // 用于触发刷新
 }
 
 export function DocumentSidebar({
   knowledgeBaseId,
   selectedDocIds,
   onSelectionChange,
+  refreshKey,
 }: DocumentSidebarProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,7 +52,7 @@ export function DocumentSidebar({
       }
     };
     fetchDocs();
-  }, [knowledgeBaseId]);
+  }, [knowledgeBaseId, refreshKey]); // 添加 refreshKey 依赖
 
   const toggleDoc = (docId: number) => {
     if (selectedDocIds.includes(docId)) {

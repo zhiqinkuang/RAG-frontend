@@ -265,6 +265,8 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
         setUploadFiles([]);
         loadDocuments(expandedKb);
         loadKnowledgeBases(); // 刷新知识库列表以更新 doc_count
+        // 通知侧边栏刷新
+        window.dispatchEvent(new CustomEvent("settings-changed"));
       } else {
         // 根据错误码处理
         if (res.code === ErrorCodes.DOC_DUPLICATE) {
@@ -295,6 +297,8 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
         toast.success("文档删除成功");
         loadDocuments(expandedKb);
         loadKnowledgeBases(); // 刷新知识库列表以更新 doc_count
+        // 通知侧边栏刷新
+        window.dispatchEvent(new CustomEvent("settings-changed"));
       } else {
         toast.error(res.message || "删除失败");
       }
