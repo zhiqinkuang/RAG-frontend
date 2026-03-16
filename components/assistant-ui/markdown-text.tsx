@@ -33,6 +33,87 @@ function removeSourceTags(text: string): string {
     .replace(/\[(\d+)\]/g, "");
 }
 
+/**
+ * 自动包裹未包裹的 LaTeX 公式
+ * 识别常见 LaTeX 模式并添加 $...$ 包裹
+ */
+function wrapLatexFormulas(text: string): string {
+  // 已经被 $ 或 $$ 包裹的内容，跳过
+  // 匹配 LaTeX 命令模式
+  const latexPatterns = [
+    // 分数 \frac{}{}
+    /\\frac\{[^}]*\}\{[^}]*\}/g,
+    // 求和/积分/极限等 \sum_{}^{}, \int_{}^{}, \lim_{}
+    /\\(sum|int|prod|lim|bigcup|bigcap|oint|iint|iiint)[_\^]?\{[^}]*\}/g,
+    // 下标/上标 X_{...}, X^{...} (字母后跟下标/上标)
+    /([A-Za-z])[_\^]\{[^}]+\}/g,
+    // 希腊字母 \alpha, \beta, \gamma 等
+    /\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|Mu|Nu|Xi|Omicron|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega)(?![a-zA-Z])/g,
+    // \text{...}
+    /\\text\{[^}]+\}/g,
+    // \sqrt{...}, \sqrt[n]{...}
+    /\\sqrt(\[[^\]]+\])?\{[^}]+\}/g,
+    // \left( \right) 等配对括号
+    /\\left[(\[{]\\right[)\]}]/g,
+    // \overline{}, \underline{}, \hat{}, \tilde{}, \bar{}, \vec{}
+    /\\(overline|underline|hat|tilde|bar|vec|dot|ddot|breve|check|acute|grave)\{[^}]+\}/g,
+    // \mathbb{}, \mathbf{}, \mathit{}, \mathrm{}, \mathcal{}, \mathscr{}, \mathfrak{}
+    /\\math(bb|bf|it|rm|cal|scr|frak)\{[^}]+\}/g,
+    // \begin{...}...\end{...} 环境
+    /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g,
+    // \partial, \nabla, \infty, \pm, \mp, \times, \div, \cdot
+    /\\(partial|nabla|infty|pm|mp|times|div|cdot|leq|geq|neq|approx|equiv|sim|propto|subset|supset|in|notin|cup|cap|emptyset|forall|exists|neg|land|lor|implies|iff|rightarrow|leftarrow|Rightarrow|Leftarrow|leftrightarrow|Leftrightarrow)(?![a-zA-Z])/g,
+  ];
+
+  // 合并所有模式
+  const combinedPattern = new RegExp(
+    latexPatterns.map(p => p.source).join('|'),
+    'g'
+  );
+
+  // 找到所有未包裹的 LaTeX 片段
+  let result = text;
+  const matches: { start: number; end: number; text: string }[] = [];
+
+  let match;
+  while ((match = combinedPattern.exec(text)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+
+    // 检查是否已经被 $ 包裹
+    const beforeStart = Math.max(0, start - 2);
+    const afterEnd = Math.min(text.length, end + 2);
+    const surrounding = text.slice(beforeStart, afterEnd);
+
+    // 如果前后已经有 $，跳过
+    if (surrounding.includes('$') && (
+      text.slice(Math.max(0, start - 1), start) === '$' ||
+      text.slice(end, Math.min(text.length, end + 1)) === '$'
+    )) {
+      continue;
+    }
+
+    matches.push({ start, end, text: match[0] });
+  }
+
+  // 从后往前替换，避免索引偏移
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i];
+    result = result.slice(0, m.start) + '$' + m.text + '$' + result.slice(m.end);
+  }
+
+  return result;
+}
+
+/**
+ * 预处理文本：移除来源标签 + 自动包裹 LaTeX 公式
+ */
+function preprocessText(text: string): string {
+  let result = removeSourceTags(text);
+  result = wrapLatexFormulas(result);
+  return result;
+}
+
 const MarkdownTextImpl = () => {
   return (
     <MarkdownTextPrimitive
@@ -40,7 +121,7 @@ const MarkdownTextImpl = () => {
       rehypePlugins={[rehypeKatex]}
       className="aui-md"
       components={defaultComponents}
-      preprocess={removeSourceTags}
+      preprocess={preprocessText}
     />
   );
 };
