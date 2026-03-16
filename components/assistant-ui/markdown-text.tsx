@@ -35,68 +35,81 @@ function removeSourceTags(text: string): string {
 
 /**
  * 自动包裹未包裹的 LaTeX 公式
- * 识别常见 LaTeX 模式并添加 $...$ 包裹
+ * 1. 将 \[...\] 转为 $$...$$（display math）
+ * 2. 将 \(...\) 转为 $...$（inline math）
+ * 3. 识别裸 LaTeX 命令并用 $...$ 包裹
  */
 function wrapLatexFormulas(text: string): string {
-  // 已经被 $ 或 $$ 包裹的内容，跳过
-  // 匹配 LaTeX 命令模式
+  // Step 1: 将 \[...\] 转为 $$...$$
+  let result = text.replace(/\\\[([\s\S]*?)\\\]/g, (_match, inner) => {
+    return `$$${inner}$$`;
+  });
+
+  // Step 2: 将 \(...\) 转为 $...$
+  result = result.replace(/\\\(([\s\S]*?)\\\)/g, (_match, inner) => {
+    return `$${inner}$`;
+  });
+
+  // Step 3: 对于裸 LaTeX 命令（未被 $ 包裹的），添加 $...$ 包裹
+  // 先收集所有已被 $ 或 $$ 包裹的区间，避免重复处理
+  const protectedRanges: { start: number; end: number }[] = [];
+  // 匹配 $$...$$ (display)
+  const displayRegex = /\$\$[\s\S]*?\$\$/g;
+  let dm;
+  while ((dm = displayRegex.exec(result)) !== null) {
+    protectedRanges.push({ start: dm.index, end: dm.index + dm[0].length });
+  }
+  // 匹配 $...$ (inline, 非空)
+  const inlineRegex = /\$(?!\$)([^\n$]+?)\$/g;
+  let im;
+  while ((im = inlineRegex.exec(result)) !== null) {
+    protectedRanges.push({ start: im.index, end: im.index + im[0].length });
+  }
+  // 匹配 ```...``` 代码块
+  const codeBlockRegex = /```[\s\S]*?```/g;
+  let cb;
+  while ((cb = codeBlockRegex.exec(result)) !== null) {
+    protectedRanges.push({ start: cb.index, end: cb.index + cb[0].length });
+  }
+  // 匹配 `...` 行内代码
+  const inlineCodeRegex = /`[^`\n]+`/g;
+  let ic;
+  while ((ic = inlineCodeRegex.exec(result)) !== null) {
+    protectedRanges.push({ start: ic.index, end: ic.index + ic[0].length });
+  }
+
+  function isProtected(pos: number): boolean {
+    return protectedRanges.some(r => pos >= r.start && pos < r.end);
+  }
+
   const latexPatterns = [
-    // 分数 \frac{}{}
     /\\frac\{[^}]*\}\{[^}]*\}/g,
-    // 求和/积分/极限等 \sum_{}^{}, \int_{}^{}, \lim_{}
-    /\\(sum|int|prod|lim|bigcup|bigcap|oint|iint|iiint)[_\^]?\{[^}]*\}/g,
-    // 下标/上标 X_{...}, X^{...} (字母后跟下标/上标)
-    /([A-Za-z])[_\^]\{[^}]+\}/g,
-    // 希腊字母 \alpha, \beta, \gamma 等
-    /\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|Mu|Nu|Xi|Omicron|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega)(?![a-zA-Z])/g,
-    // \text{...}
+    /\\(sum|int|prod|lim|bigcup|bigcap|oint|iint|iiint)[_^]?(\{[^}]*\})?/g,
+    /([A-Za-z])[_^]\{[^}]+\}/g,
+    /\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|Mu|Nu|Xi|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega)(?![a-zA-Z])/g,
     /\\text\{[^}]+\}/g,
-    // \sqrt{...}, \sqrt[n]{...}
     /\\sqrt(\[[^\]]+\])?\{[^}]+\}/g,
-    // \left( \right) 等配对括号
-    /\\left[(\[{]\\right[)\]}]/g,
-    // \overline{}, \underline{}, \hat{}, \tilde{}, \bar{}, \vec{}
+    /\\left[(\[{|][\s\S]*?\\right[)\]}|]/g,
     /\\(overline|underline|hat|tilde|bar|vec|dot|ddot|breve|check|acute|grave)\{[^}]+\}/g,
-    // \mathbb{}, \mathbf{}, \mathit{}, \mathrm{}, \mathcal{}, \mathscr{}, \mathfrak{}
     /\\math(bb|bf|it|rm|cal|scr|frak)\{[^}]+\}/g,
-    // \begin{...}...\end{...} 环境
     /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g,
-    // \partial, \nabla, \infty, \pm, \mp, \times, \div, \cdot
-    /\\(partial|nabla|infty|pm|mp|times|div|cdot|leq|geq|neq|approx|equiv|sim|propto|subset|supset|in|notin|cup|cap|emptyset|forall|exists|neg|land|lor|implies|iff|rightarrow|leftarrow|Rightarrow|Leftarrow|leftrightarrow|Leftrightarrow)(?![a-zA-Z])/g,
+    /\\(partial|nabla|infty|pm|mp|times|div|cdot|leq|geq|neq|approx|equiv|sim|propto|subset|supset|supseteq|subseteq|in|notin|cup|cap|emptyset|forall|exists|neg|land|lor|implies|iff|rightarrow|leftarrow|Rightarrow|Leftarrow|leftrightarrow|Leftrightarrow|to|mapsto|circ|oplus|otimes|perp|angle|triangle|cong|parallel|not)(?![a-zA-Z])/g,
+    /\\(binom|choose)\{[^}]*\}\{[^}]*\}/g,
+    /\\(underbrace|overbrace)\{[^}]*\}/g,
   ];
 
-  // 合并所有模式
   const combinedPattern = new RegExp(
     latexPatterns.map(p => p.source).join('|'),
     'g'
   );
 
-  // 找到所有未包裹的 LaTeX 片段
-  let result = text;
   const matches: { start: number; end: number; text: string }[] = [];
-
   let match;
-  while ((match = combinedPattern.exec(text)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
-
-    // 检查是否已经被 $ 包裹
-    const beforeStart = Math.max(0, start - 2);
-    const afterEnd = Math.min(text.length, end + 2);
-    const surrounding = text.slice(beforeStart, afterEnd);
-
-    // 如果前后已经有 $，跳过
-    if (surrounding.includes('$') && (
-      text.slice(Math.max(0, start - 1), start) === '$' ||
-      text.slice(end, Math.min(text.length, end + 1)) === '$'
-    )) {
-      continue;
-    }
-
-    matches.push({ start, end, text: match[0] });
+  while ((match = combinedPattern.exec(result)) !== null) {
+    if (isProtected(match.index)) continue;
+    matches.push({ start: match.index, end: match.index + match[0].length, text: match[0] });
   }
 
-  // 从后往前替换，避免索引偏移
   for (let i = matches.length - 1; i >= 0; i--) {
     const m = matches[i];
     result = result.slice(0, m.start) + '$' + m.text + '$' + result.slice(m.end);

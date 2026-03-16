@@ -139,3 +139,46 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* KaTeX 公式样式保护：防止 Tailwind CSS reset 破坏公式渲染 */
+.katex,
+.katex * {
+  border-width: revert;
+  border-style: revert;
+  border-color: revert;
+  line-height: revert;
+  box-sizing: content-box;
+}
+
+.katex .katex-html {
+  display: inline-block;
+}
+
+.katex-display {
+  display: block;
+  margin: 1em 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.katex-display > .katex {
+  display: inline-block;
+  text-align: initial;
+}
+
+/* 保证 KaTeX 字体大小和颜色正确 */
+.katex {
+  font-size: 1.1em;
+  color: inherit;
+}
+
+/* 暗色模式下公式颜色适配 */
+.dark .katex {
+  color: inherit;
+}
+
+/* KaTeX 错误提示样式 */
+.katex .katex-error {
+  color: var(--destructive, #cc0000);
+}

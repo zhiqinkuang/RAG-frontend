@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, dev]
   pull_request:
-    branches: [main, develop]
+    branches: [main, dev]
 
 env:
   NODE_VERSION: '20'
@@ -67,11 +67,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm test -- --coverage || echo "No tests configured"
+        run: pnpm test
 
       - name: Upload coverage
+        if: always() && hashFiles('coverage/lcov.info') != ''
         uses: codecov/codecov-action@v4
-        if: always()
         with:
           files: ./coverage/lcov.info
           flags: unittests
@@ -190,13 +190,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set image list for metadata
+        id: img
+        run: |
+          IMAGES="ghcr.io/${{ github.repository }}"
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+            IMAGES="${{ secrets.DOCKERHUB_USERNAME }}/webchat-frontend"$'\n'"$IMAGES"
+          fi
+          echo "images<<EOF" >> $GITHUB_OUTPUT
+          printf '%s' "$IMAGES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/webchat-frontend
-            ghcr.io/${{ github.repository }}
+          images: ${{ steps.img.outputs.images }}
           tags: |
             type=ref,event=branch
             type=sha,prefix=

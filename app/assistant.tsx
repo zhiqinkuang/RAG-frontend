@@ -352,13 +352,17 @@ export const Assistant = () => {
     setQueueItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
+  const selectedDocIdsRef = useRef(selectedDocIds);
+  selectedDocIdsRef.current = selectedDocIds;
+
   const transport = useMemo(
     () => new CustomChatTransport({ 
       api: "/api/chat", 
       getSettings,
-      getSelectedDocIds: () => selectedDocIds,
+      getSelectedDocIds: () => selectedDocIdsRef.current,
     }),
-    [getSettings, selectedDocIds],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getSettings],
   );
 
   const adapter = useMemo(() => new LocalStorageThreadListAdapter(), []);
