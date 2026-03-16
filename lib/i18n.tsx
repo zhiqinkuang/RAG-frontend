@@ -157,6 +157,13 @@ const translations = {
     // Local Download Path
     localDownloadPath: "本地下载地址",
     localDownloadPathHint: "论文下载时备份到本地的路径（留空则不备份）",
+    // Download
+    downloadCancelled: "下载已取消",
+    allDownloadsCancelled: "所有下载已取消",
+    noPapersSelected: "未选择论文",
+    batchDownloadSuccess: "成功下载 {count} 篇论文",
+    batchDownloadFailed: "下载失败，共 {count} 篇",
+    batchDownloadPartial: "下载完成：成功 {success} 篇，失败 {failed} 篇",
   },
   en: {
     settings: "Settings",
@@ -308,6 +315,13 @@ const translations = {
     // Local Download Path
     localDownloadPath: "Local Download Path",
     localDownloadPathHint: "Path to backup downloaded papers (leave empty to skip backup)",
+    // Download
+    downloadCancelled: "Download cancelled",
+    allDownloadsCancelled: "All downloads cancelled",
+    noPapersSelected: "No papers selected",
+    batchDownloadSuccess: "Successfully downloaded {count} papers",
+    batchDownloadFailed: "Download failed, {count} papers",
+    batchDownloadPartial: "Download complete: {success} succeeded, {failed} failed",
   },
 } as const;
 

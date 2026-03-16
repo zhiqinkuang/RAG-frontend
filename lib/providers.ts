@@ -64,7 +64,7 @@ export const PROVIDERS: ProviderConfig[] = [
   {
     id: "rag",
     name: "RAG 知识库",
-    baseURL: "http://127.0.0.1:8080",
+    baseURL: "",
     defaultModel: "ep-20260303160518-fzrwg",
     placeholder: "http://127.0.0.1:8080",
   },

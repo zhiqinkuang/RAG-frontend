@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { getStoredRagToken, clearStoredRagAuth } from "@/lib/rag-auth";
 import { AUTH_CHANGE_EVENT, TOKEN_EXPIRED_EVENT } from "@/lib/api-interceptor";
 
@@ -14,7 +14,6 @@ const PUBLIC_PATHS = ["/login", "/register"];
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
 

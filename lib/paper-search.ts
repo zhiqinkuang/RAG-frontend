@@ -3,8 +3,7 @@
  */
 
 import { getStoredRagToken } from "./rag-auth";
-
-const RAG_BACKEND_URL = "http://127.0.0.1:8080";
+import { RAG_BACKEND_URL, getRagBackendUrl } from "./config";
 
 export type PaperSource = "arXiv";
 
@@ -96,6 +95,91 @@ export async function searchPapers(
       total: data.total || 0,
       query: data.query || query,
       hasMore: data.has_more ?? (data.papers?.length >= maxResults),
+    };
+  } catch (e) {
+    if (e instanceof TypeError && e.message === "Failed to fetch") {
+      throw new Error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+    }
+    throw e;
+  }
+}
+
+/**
+ * 智能搜索提取结果
+ */
+export type ExtractedInfo = {
+  keywords?: string[];
+  detected_title?: string;
+  suggested_query?: string;
+  confidence?: number;
+};
+
+/**
+ * 智能搜索结果
+ */
+export type SmartSearchResult = SearchResult & {
+  detected_type?: "keyword" | "natural" | "smart";
+  extracted_info?: ExtractedInfo;
+  original_query?: string;
+};
+
+/**
+ * 智能搜索论文 - 统一API
+ * 自动检测输入类型并选择最优处理方式
+ * @param query 搜索关键词、自然语言描述或长文本
+ * @param options 搜索选项
+ */
+export async function smartSearchPapers(
+  query: string,
+  options?: {
+    maxResults?: number;
+    offset?: number;
+  }
+): Promise<SmartSearchResult> {
+  const { maxResults = 10, offset = 0 } = options || {};
+
+  try {
+    const res = await fetch(`${getRagBackendUrl()}/api/v1/papers/smart-search`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        query,
+        max_results: maxResults,
+        offset,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(
+        errorData.message || `HTTP ${res.status}: ${res.statusText}`
+      );
+    }
+
+    const data = await res.json();
+
+    // 处理后端返回格式
+    if (data.code === 0 && data.data) {
+      return {
+        papers: data.data.papers || [],
+        total: data.data.total || 0,
+        query: data.data.query || query,
+        hasMore: data.data.has_more ?? (data.data.papers?.length >= maxResults),
+        detected_type: data.data.detected_type,
+        extracted_info: data.data.extracted_info,
+        original_query: data.data.original_query,
+      };
+    }
+
+    // 如果后端直接返回数据
+    return {
+      papers: data.papers || [],
+      total: data.total || 0,
+      query: data.query || query,
+      hasMore: data.has_more ?? (data.papers?.length >= maxResults),
+      detected_type: data.detected_type,
+      extracted_info: data.extracted_info,
+      original_query: data.original_query,
     };
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {

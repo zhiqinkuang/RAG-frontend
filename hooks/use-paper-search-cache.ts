@@ -9,6 +9,7 @@ import type { Paper, SearchResult } from "@/lib/paper-search";
 type CacheEntry = {
   papers: Paper[];
   total: number;
+  hasMore: boolean;
   timestamp: number;
   query: string;
 };
@@ -42,6 +43,7 @@ export function usePaperSearchCache() {
     return {
       papers: entry.papers,
       total: entry.total,
+      hasMore: entry.hasMore,
       query: entry.query,
     };
   }, []);
@@ -52,6 +54,7 @@ export function usePaperSearchCache() {
     globalCache[normalizedQuery] = {
       papers: result.papers,
       total: result.total,
+      hasMore: result.hasMore ?? false,
       timestamp: Date.now(),
       query: result.query,
     };

@@ -20,6 +20,19 @@ import ShikiHighlighter from "@/components/assistant-ui/syntax-highlighter";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
+/**
+ * 移除来源标签的函数
+ * 匹配 [来源[数字]] 或 [数字] 格式的引用标签
+ */
+function removeSourceTags(text: string): string {
+  return text
+    // 移除 [来源[数字]] 格式，如 [来源[5]]
+    .replace(/\[来源\[(\d+)\]\]/g, "")
+    // 移除纯数字的方括号标签 [数字]，如 [5]
+    // 但保留其他格式如 [1,2,3] 或 [a-z] 等
+    .replace(/\[(\d+)\]/g, "");
+}
+
 const MarkdownTextImpl = () => {
   return (
     <MarkdownTextPrimitive
@@ -27,6 +40,7 @@ const MarkdownTextImpl = () => {
       rehypePlugins={[rehypeKatex]}
       className="aui-md"
       components={defaultComponents}
+      preprocess={removeSourceTags}
     />
   );
 };

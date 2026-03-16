@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
@@ -21,7 +21,6 @@ const DEFAULT_RAG_BASE_URL = "http://127.0.0.1:8080";
 export default function LoginPage() {
   const { t } = useI18n();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -104,15 +103,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8">
+      <div className="w-full max-w-sm space-y-4 sm:space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold">{t.loginTitle}</h1>
-          <p className="mt-1 text-muted-foreground text-sm">{t.ragAccount}</p>
+          <h1 className="text-xl sm:text-2xl font-semibold">{t.loginTitle}</h1>
+          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">{t.ragAccount}</p>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">
+            <label htmlFor="email" className="text-xs sm:text-sm font-medium">
               {t.email}
             </label>
             <Input
@@ -125,7 +124,7 @@ export default function LoginPage() {
                 validateEmailField(e.target.value);
               }}
               onBlur={() => validateEmailField(email)}
-              className={`h-10 ${emailError ? "border-destructive" : ""}`}
+              className={`h-9 sm:h-10 text-sm ${emailError ? "border-destructive" : ""}`}
               aria-invalid={!!emailError}
               aria-describedby={emailError ? "email-error" : undefined}
               required
@@ -137,7 +136,7 @@ export default function LoginPage() {
             )}
           </div>
           <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
+            <label htmlFor="password" className="text-xs sm:text-sm font-medium">
               {t.password}
             </label>
             <Input
@@ -146,18 +145,18 @@ export default function LoginPage() {
               placeholder={t.password}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-10"
+              className="h-9 sm:h-10 text-sm"
               required
             />
           </div>
           {error && (
-            <p className="text-destructive text-sm" role="alert">
+            <p className="text-destructive text-xs sm:text-sm" role="alert">
               {error}
             </p>
           )}
           <Button
             type="submit"
-            className="w-full"
+            className="w-full h-9 sm:h-10"
             disabled={loading || isLocked}
             aria-disabled={loading || isLocked}
           >
@@ -168,7 +167,7 @@ export default function LoginPage() {
                 : t.login}
           </Button>
         </form>
-        <p className="text-center text-muted-foreground text-sm">
+        <p className="text-center text-muted-foreground text-xs sm:text-sm">
           {t.notLoggedIn}{" "}
           <Link href="/register" className="text-primary underline underline-offset-2">
             {t.register}

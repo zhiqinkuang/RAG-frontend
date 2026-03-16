@@ -11,7 +11,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
@@ -97,7 +96,6 @@ export function ThreadListSidebar({
         <SidebarContent className="aui-sidebar-content px-2">
           <ThreadList />
         </SidebarContent>
-        <SidebarRail />
       </Sidebar>
     );
   }
@@ -125,7 +123,7 @@ export function ThreadListSidebar({
             variant="ghost"
             size="sm"
             className="gap-1.5"
-            onClick={() => router.push("/paper")}
+            onClick={() => router.push("/paper-search")}
           >
             <BookOpen className="size-4" />
             <span className="text-xs">{t.paperSearch || "论文搜索"}</span>
@@ -178,7 +176,6 @@ export function ThreadListSidebar({
           </div>
         )}
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 }

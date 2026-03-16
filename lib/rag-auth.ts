@@ -222,7 +222,7 @@ export async function ensureValidToken(baseURL: string): Promise<boolean> {
 /**
  * 安全的错误处理 - 避免泄露敏感信息
  * @param error 原始错误
- * @returns 安全的错误消息
+ * @returns 安全的错误消息（中文）
  */
 function sanitizeErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -230,35 +230,65 @@ function sanitizeErrorMessage(error: unknown): string {
     const message = error.message.toLowerCase();
     
     // 网络错误
-    if (message.includes("network") || message.includes("fetch")) {
-      return "Network error. Please check your connection.";
+    if (message.includes("network") || message.includes("fetch") || message.includes("failed to fetch")) {
+      return "网络连接失败，请检查网络设置";
     }
     
     // 超时错误
     if (message.includes("timeout")) {
-      return "Request timed out. Please try again.";
+      return "请求超时，请稍后重试";
     }
     
-    // 认证错误
+    // 认证错误 - 登录时表示用户名密码错误
     if (message.includes("401") || message.includes("unauthorized")) {
-      return "Authentication failed. Please log in again.";
+      return "用户名或密码错误";
     }
     
     // 权限错误
     if (message.includes("403") || message.includes("forbidden")) {
-      return "You do not have permission to perform this action.";
+      return "没有权限执行此操作";
     }
     
     // 服务器错误
-    if (message.includes("500") || message.includes("server")) {
-      return "Server error. Please try again later.";
+    if (message.includes("500") || message.includes("server error") || message.includes("internal error")) {
+      return "服务器错误，请稍后重试";
+    }
+    
+    // 服务不可用
+    if (message.includes("503") || message.includes("service unavailable")) {
+      return "服务暂时不可用，请稍后重试";
+    }
+    
+    // 连接被拒绝
+    if (message.includes("econnrefused") || message.includes("connection refused")) {
+      return "无法连接到服务器，请检查服务是否启动";
+    }
+    
+    // DNS 解析失败
+    if (message.includes("enotfound") || message.includes("dns")) {
+      return "无法解析服务器地址，请检查网络配置";
+    }
+    
+    // 请求体过大
+    if (message.includes("413") || message.includes("too large")) {
+      return "请求数据过大";
+    }
+    
+    // 请求频率限制
+    if (message.includes("429") || message.includes("too many")) {
+      return "请求过于频繁，请稍后重试";
+    }
+    
+    // 登录失败（API 返回的具体错误）
+    if (message.includes("login failed") || message.includes("credentials")) {
+      return "用户名或密码错误";
     }
     
     // 其他错误返回通用消息
-    return "An error occurred. Please try again.";
+    return "操作失败，请稍后重试";
   }
   
-  return "An unexpected error occurred.";
+  return "发生未知错误";
 }
 
 /**

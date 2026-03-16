@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           // Content-Security-Policy - 防止 XSS 和数据注入攻击
+          // 注意：'unsafe-eval' 是 Next.js 开发模式必需的（用于 Fast Refresh 和 HMR）
+          // 生产环境中，Next.js 会自动移除不必要的 unsafe 指令
+          // 如果应用不需要 eval，可以考虑在生产构建时移除此选项
           {
             key: "Content-Security-Policy",
             value: [

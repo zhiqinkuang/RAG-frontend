@@ -21,8 +21,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThreadListSidebar } from "@/components/assistant-ui/threadlist-sidebar";
-import { Separator } from "@/components/ui/separator";
 import { SettingsDialog, useApiKey, type ApiKeySettings } from "@/components/settings-dialog";
+import { DocumentSidebar } from "@/components/document-sidebar";
 import { useI18n } from "@/lib/i18n";
 import { Component, useMemo, useState, useCallback, useEffect, useRef, type FC, type ReactNode } from "react";
 import { getProvider } from "@/lib/providers";
@@ -31,26 +31,28 @@ import type { Attachment } from "@assistant-ui/react";
 import { customAttachmentAdapter } from "@/lib/attachment-adapter";
 import { LocalStorageThreadListAdapter, setOnThreadDeletedCallback } from "@/lib/local-thread-list-adapter";
 import { createThreadHistoryAdapter } from "@/lib/message-store";
+import { listKnowledgeBases, type KnowledgeBase } from "@/lib/rag-kb";
 
 type SendMessagesOptions = Parameters<AssistantChatTransport<UIMessage>["sendMessages"]>[0];
 type SendMessagesResult = ReadableStream<UIMessageChunk>;
 
 class CustomChatTransport extends AssistantChatTransport<UIMessage> {
   private getSettings: () => ApiKeySettings;
+  private getSelectedDocIds: () => number[];
 
-  constructor(options: { api: string; getSettings: () => ApiKeySettings }) {
+  constructor(options: { api: string; getSettings: () => ApiKeySettings; getSelectedDocIds: () => number[] }) {
     super({
       ...options,
       // 自定义 fetch 禁用缓冲
       fetch: (url, init) => {
         return fetch(url, {
           ...init,
-          // @ts-expect-error - 非标准属性，用于禁用浏览器缓冲
           cache: "no-store",
         });
       },
     });
     this.getSettings = options.getSettings;
+    this.getSelectedDocIds = options.getSelectedDocIds;
   }
 
   private injectSettings(options: SendMessagesOptions): SendMessagesOptions {
@@ -68,6 +70,11 @@ class CustomChatTransport extends AssistantChatTransport<UIMessage> {
     };
     if (settings.provider === "rag" && settings.knowledgeBaseId != null && settings.knowledgeBaseId > 0) {
       next.knowledgeBaseId = settings.knowledgeBaseId;
+      // 添加选中的文档 ID
+      const selectedDocIds = this.getSelectedDocIds();
+      if (selectedDocIds.length > 0) {
+        next.selectedDocIds = selectedDocIds;
+      }
     }
     return { ...options, body: next };
   }
@@ -172,10 +179,10 @@ const ThreadDeleteHandler: FC = () => {
         // 切换到最近的对话或创建新对话
         if (remainingThreads.length > 0) {
           const latestThread = remainingThreads[0];
-          aui.threadList().switchToThread(latestThread.remoteId);
+          aui.threads().switchToThread(latestThread.remoteId);
         } else {
           // 没有其他对话，创建新对话
-          aui.threadList().newThread();
+          aui.threads().switchToNewThread();
         }
       }
     });
@@ -218,7 +225,10 @@ const AssistantContent: FC<{
   adapter: LocalStorageThreadListAdapter;
   getSettings: () => ApiKeySettings;
   displayModel: string;
-}> = ({ transport, adapter, getSettings, displayModel }) => {
+  knowledgeBaseId: number | undefined;
+  selectedDocIds: number[];
+  onSelectedDocIdsChange: (docIds: number[]) => void;
+}> = ({ transport, adapter, getSettings, displayModel, knowledgeBaseId, selectedDocIds, onSelectedDocIdsChange }) => {
   const { t } = useI18n();
   
   const runtime = unstable_useRemoteThreadListRuntime({
@@ -237,18 +247,26 @@ const AssistantContent: FC<{
         <div className="flex h-dvh w-full pr-0.5">
           <ThreadListSidebar />
           <SidebarInset>
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-              <SidebarTrigger />
-              <Separator orientation="vertical" className="mr-2 h-4" />
-              <h1 className="text-sm font-medium">
+            <header className="flex h-12 sm:h-16 shrink-0 items-center gap-2 border-b px-2 sm:px-4">
+              <SidebarTrigger className="-ml-1" />
+              <h1 className="text-xs sm:text-sm font-medium truncate">
                 {t.chat}{" "}
-                <span className="font-normal text-muted-foreground">
+                <span className="font-normal text-muted-foreground hidden sm:inline">
                   · {displayModel}
                 </span>
               </h1>
             </header>
-            <div className="flex-1 overflow-hidden">
-              <Thread />
+            <div className="flex flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <Thread />
+              </div>
+              {getSettings().provider === "rag" && (
+                <DocumentSidebar
+                  knowledgeBaseId={knowledgeBaseId}
+                  selectedDocIds={selectedDocIds}
+                  onSelectionChange={onSelectedDocIdsChange}
+                />
+              )}
             </div>
           </SidebarInset>
         </div>
@@ -260,26 +278,50 @@ const AssistantContent: FC<{
 export const Assistant = () => {
   const { getSettings } = useApiKey();
   const { t } = useI18n();
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
+  const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
   const [displayModel, setDisplayModel] = useState(() => {
     const s = getSettings();
     const prov = getProvider(s.provider);
     return s.model || prov.defaultModel || t.notConfigured;
   });
 
+  // 加载知识库列表
+  useEffect(() => {
+    const fetchKnowledgeBases = async () => {
+      try {
+        const result = await listKnowledgeBases();
+        if (result.data?.knowledge_bases) {
+          setKnowledgeBases(result.data.knowledge_bases);
+        }
+      } catch (error) {
+        console.error("Failed to fetch knowledge bases:", error);
+      }
+    };
+    fetchKnowledgeBases();
+  }, []);
+
   const refreshDisplayModel = useCallback(() => {
     const s = getSettings();
     const prov = getProvider(s.provider);
-    // RAG 模式显示 "知识库"，其他模式显示模型名称
+    // RAG 模式显示 "知识库 · 知识库名称"，其他模式显示模型名称
     if (s.provider === "rag") {
-      setDisplayModel(t.knowledgeBase || "知识库");
+      const kbName = s.knowledgeBaseId
+        ? knowledgeBases.find((kb) => kb.ID === s.knowledgeBaseId)?.name
+        : null;
+      if (kbName) {
+        setDisplayModel(`${t.knowledgeBase || "知识库"} · ${kbName}`);
+      } else {
+        setDisplayModel(t.knowledgeBase || "知识库");
+      }
     } else {
       setDisplayModel(s.model || prov.defaultModel || t.notConfigured);
     }
-  }, [getSettings, t.notConfigured, t.knowledgeBase]);
+  }, [getSettings, t.notConfigured, t.knowledgeBase, knowledgeBases]);
 
   useEffect(() => {
     refreshDisplayModel();
-  }, [refreshDisplayModel]);
+  }, [refreshDisplayModel, knowledgeBases]);
 
   // 监听设置变化事件
   useEffect(() => {
@@ -306,11 +348,23 @@ export const Assistant = () => {
   }, []);
 
   const transport = useMemo(
-    () => new CustomChatTransport({ api: "/api/chat", getSettings }),
-    [getSettings],
+    () => new CustomChatTransport({ 
+      api: "/api/chat", 
+      getSettings,
+      getSelectedDocIds: () => selectedDocIds,
+    }),
+    [getSettings, selectedDocIds],
   );
 
   const adapter = useMemo(() => new LocalStorageThreadListAdapter(), []);
+
+  // 获取当前知识库 ID
+  const currentKnowledgeBaseId = getSettings().provider === "rag" ? getSettings().knowledgeBaseId : undefined;
+
+  // 当知识库切换时清空选中的文档
+  useEffect(() => {
+    setSelectedDocIds([]);
+  }, [currentKnowledgeBaseId]);
 
   return (
     <QueueContext.Provider
@@ -322,6 +376,9 @@ export const Assistant = () => {
           adapter={adapter}
           getSettings={getSettings}
           displayModel={displayModel}
+          knowledgeBaseId={currentKnowledgeBaseId}
+          selectedDocIds={selectedDocIds}
+          onSelectedDocIdsChange={setSelectedDocIds}
         />
       </RuntimeErrorBoundary>
     </QueueContext.Provider>

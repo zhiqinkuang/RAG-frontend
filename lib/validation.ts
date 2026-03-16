@@ -36,21 +36,21 @@ export type ValidationResult = {
  */
 export function validateEmail(email: string): ValidationResult {
   if (!email || typeof email !== "string") {
-    return { valid: false, error: "Email is required" };
+    return { valid: false, error: "请输入邮箱" };
   }
 
   const trimmed = email.trim().toLowerCase();
   
   if (trimmed.length === 0) {
-    return { valid: false, error: "Email is required" };
+    return { valid: false, error: "请输入邮箱" };
   }
 
   if (trimmed.length > 254) {
-    return { valid: false, error: "Email is too long" };
+    return { valid: false, error: "邮箱过长" };
   }
 
   if (!EMAIL_REGEX.test(trimmed)) {
-    return { valid: false, error: "Invalid email format" };
+    return { valid: false, error: "邮箱格式不正确" };
   }
 
   return { valid: true };
@@ -71,34 +71,34 @@ export function validatePassword(password: string): PasswordStrength {
   };
 
   if (!password || typeof password !== "string") {
-    result.errors.push("Password is required");
+    result.errors.push("请输入密码");
     return result;
   }
 
   // 长度检查
   if (password.length < 8) {
-    result.errors.push("Password must be at least 8 characters");
+    result.errors.push("密码长度不足，至少需要 8 位");
   } else if (password.length >= 12) {
     result.score++;
   }
 
   // 包含小写字母
   if (!/[a-z]/.test(password)) {
-    result.errors.push("Password must contain lowercase letters");
+    result.errors.push("密码必须包含小写字母");
   } else {
     result.score++;
   }
 
   // 包含大写字母
   if (!/[A-Z]/.test(password)) {
-    result.errors.push("Password must contain uppercase letters");
+    result.errors.push("密码必须包含大写字母");
   } else {
     result.score++;
   }
 
   // 包含数字
   if (!/[0-9]/.test(password)) {
-    result.errors.push("Password must contain numbers");
+    result.errors.push("密码必须包含数字");
   } else {
     result.score++;
   }
@@ -114,17 +114,17 @@ export function validatePassword(password: string): PasswordStrength {
     "Password123", "Admin123", "Welcome1", "Letmein1",
   ];
   if (commonPasswords.some(p => password.toLowerCase().includes(p.toLowerCase()))) {
-    result.warnings.push("Password contains common patterns");
+    result.warnings.push("密码包含常见模式，建议使用更复杂的密码");
   }
 
   // 检查连续字符
   if (/(.)\1{2,}/.test(password)) {
-    result.warnings.push("Password contains repeated characters");
+    result.warnings.push("密码包含重复字符");
   }
 
   // 检查连续数字或字母
   if (/(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i.test(password)) {
-    result.warnings.push("Password contains sequential characters");
+    result.warnings.push("密码包含连续字符");
   }
 
   result.valid = result.errors.length === 0;
@@ -139,30 +139,30 @@ export function validatePassword(password: string): PasswordStrength {
  */
 export function validateUsername(username: string): ValidationResult {
   if (!username || typeof username !== "string") {
-    return { valid: false, error: "Username is required" };
+    return { valid: false, error: "请输入用户名" };
   }
 
   const trimmed = username.trim();
 
   if (trimmed.length === 0) {
-    return { valid: false, error: "Username is required" };
+    return { valid: false, error: "请输入用户名" };
   }
 
   if (trimmed.length < 3) {
-    return { valid: false, error: "Username must be at least 3 characters" };
+    return { valid: false, error: "用户名至少需要 3 个字符" };
   }
 
   if (trimmed.length > 20) {
-    return { valid: false, error: "Username must be at most 20 characters" };
+    return { valid: false, error: "用户名最多 20 个字符" };
   }
 
   if (!USERNAME_REGEX.test(trimmed)) {
-    return { valid: false, error: "Username can only contain letters, numbers, and underscores" };
+    return { valid: false, error: "用户名只能包含字母、数字和下划线" };
   }
 
   // 检查是否以数字开头
   if (/^[0-9]/.test(trimmed)) {
-    return { valid: false, error: "Username cannot start with a number" };
+    return { valid: false, error: "用户名不能以数字开头" };
   }
 
   return { valid: true };
@@ -219,18 +219,18 @@ export function validateURL(
   }
 ): ValidationResult {
   if (!url || typeof url !== "string") {
-    return { valid: false, error: "URL is required" };
+    return { valid: false, error: "请输入 URL" };
   }
 
   const trimmed = url.trim();
 
   if (trimmed.length === 0) {
-    return { valid: false, error: "URL is required" };
+    return { valid: false, error: "请输入 URL" };
   }
 
   // 检查基本格式
   if (!URL_REGEX.test(trimmed)) {
-    return { valid: false, error: "Invalid URL format" };
+    return { valid: false, error: "URL 格式不正确" };
   }
 
   try {
@@ -243,22 +243,22 @@ export function validateURL(
     // 检查协议
     const allowedProtocols = options?.allowedProtocols || ["http:", "https:"];
     if (!allowedProtocols.includes(parsed.protocol)) {
-      return { valid: false, error: `Protocol ${parsed.protocol} is not allowed` };
+      return { valid: false, error: `协议 ${parsed.protocol} 不被允许` };
     }
 
     // 检查 HTTPS 要求
     if (options?.requireHttps && parsed.protocol !== "https:") {
-      return { valid: false, error: "HTTPS is required" };
+      return { valid: false, error: "需要使用 HTTPS 协议" };
     }
 
     // 检查 localhost
     if (!options?.allowLocalhost && parsed.hostname === "localhost") {
-      return { valid: false, error: "Localhost is not allowed" };
+      return { valid: false, error: "不允许使用 localhost" };
     }
 
     return { valid: true };
   } catch {
-    return { valid: false, error: "Invalid URL format" };
+    return { valid: false, error: "URL 格式不正确" };
   }
 }
 
@@ -274,20 +274,20 @@ export function validateLength(
   input: string,
   min: number,
   max: number,
-  fieldName: string = "Input"
+  fieldName: string = "输入"
 ): ValidationResult {
   if (!input || typeof input !== "string") {
-    return { valid: false, error: `${fieldName} is required` };
+    return { valid: false, error: `请输入${fieldName}` };
   }
 
   const length = input.trim().length;
 
   if (length < min) {
-    return { valid: false, error: `${fieldName} must be at least ${min} characters` };
+    return { valid: false, error: `${fieldName}至少需要 ${min} 个字符` };
   }
 
   if (length > max) {
-    return { valid: false, error: `${fieldName} must be at most ${max} characters` };
+    return { valid: false, error: `${fieldName}最多 ${max} 个字符` };
   }
 
   return { valid: true };

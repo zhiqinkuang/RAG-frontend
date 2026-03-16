@@ -9,39 +9,55 @@ export async function POST(req: Request) {
     const base = baseURL?.replace(/\/$/, "");
     if (!base || !auth?.startsWith("Bearer ")) {
       return NextResponse.json(
-        { error: "baseURL and Authorization header are required" },
+        { error: "缺少必要参数" },
         { status: 400 }
       );
     }
 
-    const res = await fetch(`${base}/api/v1/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: auth,
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${base}/api/v1/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: auth,
+        },
+      });
+    } catch (fetchError) {
+      // 网络连接错误
+      const errMsg = fetchError instanceof Error ? fetchError.message.toLowerCase() : "";
+      if (errMsg.includes("econnrefused") || errMsg.includes("connection refused")) {
+        return NextResponse.json({ error: "无法连接到服务器，请检查服务是否启动" }, { status: 503 });
+      }
+      if (errMsg.includes("enotfound") || errMsg.includes("dns")) {
+        return NextResponse.json({ error: "无法解析服务器地址，请检查网络配置" }, { status: 503 });
+      }
+      if (errMsg.includes("timeout")) {
+        return NextResponse.json({ error: "连接超时，请稍后重试" }, { status: 504 });
+      }
+      return NextResponse.json({ error: "网络连接失败，请检查网络设置" }, { status: 503 });
+    }
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return NextResponse.json(
-        { error: (data as { message?: string }).message ?? "Refresh failed" },
-        { status: res.status }
-      );
+      if (res.status === 401) {
+        return NextResponse.json({ error: "登录已过期，请重新登录" }, { status: 401 });
+      }
+      if (res.status >= 500) {
+        return NextResponse.json({ error: "服务器错误，请稍后重试" }, { status: 500 });
+      }
+      return NextResponse.json({ error: "刷新令牌失败，请重新登录" }, { status: res.status });
     }
 
     const code = (data as { code?: number }).code;
     const payload = (data as { data?: unknown }).data;
     if (code !== 0 || !payload) {
-      return NextResponse.json(
-        { error: (data as { message?: string }).message ?? "Refresh failed" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "刷新令牌失败，请重新登录" }, { status: 400 });
     }
 
     return NextResponse.json(payload);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Refresh error:", e instanceof Error ? e.message : "Unknown error");
+    return NextResponse.json({ error: "服务器错误，请稍后重试" }, { status: 500 });
   }
 }
