@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
@@ -70,6 +71,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // 验证状态
   const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -219,18 +221,28 @@ export default function RegisterPage() {
             <label htmlFor="password" className="text-xs sm:text-sm font-medium">
               {t.password}
             </label>
-            <Input
-              id="password"
-              type="password"
-              placeholder={t.password}
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-                validatePasswordField(e.target.value);
-              }}
-              className={`h-9 sm:h-10 text-sm ${passwordStrength.errors.length > 0 && password ? "border-destructive" : ""}`}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder={t.password}
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  validatePasswordField(e.target.value);
+                }}
+                className={`h-9 sm:h-10 text-sm pr-10 ${passwordStrength.errors.length > 0 && password ? "border-destructive" : ""}`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showPassword ? "隐藏密码" : "显示密码"}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {password && <PasswordStrengthIndicator strength={passwordStrength} t={{ lang }} />}
           </div>
           {error && (
