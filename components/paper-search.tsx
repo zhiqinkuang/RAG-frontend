@@ -830,11 +830,7 @@ export function PaperSearch() {
                 <span className="font-medium text-primary">{extractedInfo.suggested_query}</span>
               </div>
             )}
-            {extractedInfo.confidence && (
-              <div className="text-xs text-muted-foreground">
-                {lang === "zh" ? "置信度" : "Confidence"}: {Math.round(extractedInfo.confidence * 100)}%
-              </div>
-            )}
+            
           </div>
         </div>
       )}
