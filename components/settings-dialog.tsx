@@ -421,7 +421,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                 </label>
                 <Input
                   id="model"
-                  type="text"
+                  type="password"
                   placeholder={currentProvider.placeholder}
                   value={settings.model}
                   className="h-8 sm:h-9 md:h-10 text-xs sm:text-sm"
