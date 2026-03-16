@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { FileText, Filter, X } from "lucide-react";
+import { FileText, Filter, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -114,7 +114,7 @@ export function DocumentSidebar({
                 {documents.map((doc) => (
                   <div
                     key={doc.ID}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer group"
                     onClick={() => toggleDoc(doc.ID)}
                   >
                     <Checkbox
@@ -124,6 +124,20 @@ export function DocumentSidebar({
                     />
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="text-sm truncate flex-1" title={doc.file_name}>{doc.file_name}</span>
+                    {/* 预览按钮 - 仅 PDF 显示 */}
+                    {doc.file_type === "pdf" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`/preview?docId=${doc.ID}&name=${encodeURIComponent(doc.file_name)}`, '_blank');
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
+                        title="预览 PDF"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
