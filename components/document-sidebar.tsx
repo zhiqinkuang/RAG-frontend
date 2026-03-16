@@ -123,7 +123,7 @@ export function DocumentSidebar({
                       className="h-4 w-4"
                     />
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="text-sm truncate flex-1">{doc.file_name}</span>
+                    <span className="text-sm truncate flex-1" title={doc.file_name}>{doc.file_name}</span>
                   </div>
                 ))}
               </div>
