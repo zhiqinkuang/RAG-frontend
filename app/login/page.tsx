@@ -16,8 +16,8 @@ const STORAGE_KEY = "chat-settings";
 /** 防暴力破解：登录失败后禁用时间（毫秒） */
 const LOCKOUT_DURATION = 3000;
 
-/** 默认 RAG 后端地址 */
-const DEFAULT_RAG_BASE_URL = "http://127.0.0.1:8080";
+/** 默认 RAG 后端地址（优先使用环境变量） */
+const DEFAULT_RAG_BASE_URL = process.env.NEXT_PUBLIC_RAG_API_URL || "http://127.0.0.1:8080";
 
 export default function LoginPage() {
   const { t } = useI18n();

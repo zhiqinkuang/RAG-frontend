@@ -18,8 +18,8 @@ import {
 
 const STORAGE_KEY = "chat-settings";
 
-/** 默认 RAG 后端地址 */
-const DEFAULT_RAG_BASE_URL = "http://127.0.0.1:8080";
+/** 默认 RAG 后端地址（优先使用环境变量） */
+const DEFAULT_RAG_BASE_URL = process.env.NEXT_PUBLIC_RAG_API_URL || "http://127.0.0.1:8080";
 
 /** 密码强度指示器组件 */
 function PasswordStrengthIndicator({ strength, t }: { strength: PasswordStrength; t: Record<string, string> }) {
