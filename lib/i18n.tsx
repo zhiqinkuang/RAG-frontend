@@ -87,7 +87,8 @@ const translations = {
     username: "用户名",
     loginTitle: "RAG 账号登录",
     registerTitle: "注册 RAG 账号",
-    loginWithRagHint: "请先在 API 中选择 RAG 知识库并填写 Base URL，再在此登录。",
+    loginWithRagHint:
+      "请先在 API 中选择 RAG 知识库并填写 Base URL，再在此登录。",
     loginSuccess: "登录成功，Token 已写入 API Key",
     registerSuccess: "注册成功，请登录",
     ragAccount: "用户账号",
@@ -104,7 +105,8 @@ const translations = {
     // Paper Search
     paperSearch: "论文搜索",
     paperSearchPlaceholder: "输入关键词搜索 arXiv 论文...",
-    paperSearchPlaceholderNL: "描述你想要的论文，如：帮我找关于深度学习图像分类的最新论文...",
+    paperSearchPlaceholderNL:
+      "描述你想要的论文，如：帮我找关于深度学习图像分类的最新论文...",
     search: "搜索",
     searching: "搜索中...",
     searchResults: "搜索结果",
@@ -177,7 +179,8 @@ const translations = {
     apiKeyConfigured: "API Key configured",
     apiKeyRequired: "Configure API Key to use chat",
     apiKeyOptional: "API Key is optional (depends on your backend auth)",
-    customApiHint: "Enter full API URL. Backend must return UI Message Stream SSE format.",
+    customApiHint:
+      "Enter full API URL. Backend must return UI Message Stream SSE format.",
     cancel: "Cancel",
     save: "Save",
     saved: "Saved",
@@ -234,7 +237,8 @@ const translations = {
     knowledgeBase: "Knowledge Base",
     knowledgeBaseId: "Knowledge Base ID",
     knowledgeBaseIdPlaceholder: "Optional, leave empty to not specify",
-    ragApiHint: "Base URL is your RAG backend; API Key is the token from login.",
+    ragApiHint:
+      "Base URL is your RAG backend; API Key is the token from login.",
     // Auth (RAG)
     login: "Login",
     register: "Register",
@@ -245,7 +249,8 @@ const translations = {
     username: "Username",
     loginTitle: "RAG Account Login",
     registerTitle: "Register RAG Account",
-    loginWithRagHint: "Select RAG Knowledge Base and set Base URL in API tab first, then login here.",
+    loginWithRagHint:
+      "Select RAG Knowledge Base and set Base URL in API tab first, then login here.",
     loginSuccess: "Login successful, token saved to API Key",
     registerSuccess: "Registered. Please log in.",
     ragAccount: "User Account",
@@ -253,8 +258,10 @@ const translations = {
     passwordMinLength: "Password must be at least 6 characters",
     // Validation errors
     invalidEmail: "Invalid email format",
-    invalidPassword: "Password must be at least 8 characters with uppercase, lowercase and number",
-    invalidUsername: "Username must be 3-20 characters (letters, numbers, underscores)",
+    invalidPassword:
+      "Password must be at least 8 characters with uppercase, lowercase and number",
+    invalidUsername:
+      "Username must be 3-20 characters (letters, numbers, underscores)",
     passwordRequired: "Password is required",
     loginFailed: "Login failed, please check your email and password",
     networkError: "Network error, please check your connection",
@@ -262,7 +269,8 @@ const translations = {
     // Paper Search
     paperSearch: "Paper Search",
     paperSearchPlaceholder: "Search arXiv papers...",
-    paperSearchPlaceholderNL: "Describe what you're looking for, e.g., Find recent papers on deep learning for image classification...",
+    paperSearchPlaceholderNL:
+      "Describe what you're looking for, e.g., Find recent papers on deep learning for image classification...",
     search: "Search",
     searching: "Searching...",
     searchResults: "Search Results",
@@ -314,14 +322,16 @@ const translations = {
     backToChat: "Back to Chat",
     // Local Download Path
     localDownloadPath: "Local Download Path",
-    localDownloadPathHint: "Path to backup downloaded papers (leave empty to skip backup)",
+    localDownloadPathHint:
+      "Path to backup downloaded papers (leave empty to skip backup)",
     // Download
     downloadCancelled: "Download cancelled",
     allDownloadsCancelled: "All downloads cancelled",
     noPapersSelected: "No papers selected",
     batchDownloadSuccess: "Successfully downloaded {count} papers",
     batchDownloadFailed: "Download failed, {count} papers",
-    batchDownloadPartial: "Download complete: {success} succeeded, {failed} failed",
+    batchDownloadPartial:
+      "Download complete: {success} succeeded, {failed} failed",
   },
 } as const;
 
@@ -373,16 +383,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lang]);
 
-  const value = React.useMemo(
-    () => ({ lang, setLang, t }),
-    [lang, setLang, t]
-  );
+  const value = React.useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
 
-  return (
-    <I18nContext.Provider value={value}>
-      {children}
-    </I18nContext.Provider>
-  );
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
 export function useI18n() {

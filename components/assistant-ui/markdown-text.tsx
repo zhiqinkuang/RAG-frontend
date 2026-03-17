@@ -25,12 +25,14 @@ import { cn } from "@/lib/utils";
  * 匹配 [来源[数字]] 或 [数字] 格式的引用标签
  */
 function removeSourceTags(text: string): string {
-  return text
-    // 移除 [来源[数字]] 格式，如 [来源[5]]
-    .replace(/\[来源\[(\d+)\]\]/g, "")
-    // 移除纯数字的方括号标签 [数字]，如 [5]
-    // 但保留其他格式如 [1,2,3] 或 [a-z] 等
-    .replace(/\[(\d+)\]/g, "");
+  return (
+    text
+      // 移除 [来源[数字]] 格式，如 [来源[5]]
+      .replace(/\[来源\[(\d+)\]\]/g, "")
+      // 移除纯数字的方括号标签 [数字]，如 [5]
+      // 但保留其他格式如 [1,2,3] 或 [a-z] 等
+      .replace(/\[(\d+)\]/g, "")
+  );
 }
 
 /**
@@ -79,7 +81,7 @@ function wrapLatexFormulas(text: string): string {
   }
 
   function isProtected(pos: number): boolean {
-    return protectedRanges.some(r => pos >= r.start && pos < r.end);
+    return protectedRanges.some((r) => pos >= r.start && pos < r.end);
   }
 
   const latexPatterns = [
@@ -89,7 +91,7 @@ function wrapLatexFormulas(text: string): string {
     /\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|Mu|Nu|Xi|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega)(?![a-zA-Z])/g,
     /\\text\{[^}]+\}/g,
     /\\sqrt(\[[^\]]+\])?\{[^}]+\}/g,
-    /\\left[(\[{|][\s\S]*?\\right[)\]}|]/g,
+    /\\left[([{|][\s\S]*?\\right[)\]}|]/g,
     /\\(overline|underline|hat|tilde|bar|vec|dot|ddot|breve|check|acute|grave)\{[^}]+\}/g,
     /\\math(bb|bf|it|rm|cal|scr|frak)\{[^}]+\}/g,
     /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g,
@@ -99,20 +101,24 @@ function wrapLatexFormulas(text: string): string {
   ];
 
   const combinedPattern = new RegExp(
-    latexPatterns.map(p => p.source).join('|'),
-    'g'
+    latexPatterns.map((p) => p.source).join("|"),
+    "g",
   );
 
   const matches: { start: number; end: number; text: string }[] = [];
   let match;
   while ((match = combinedPattern.exec(result)) !== null) {
     if (isProtected(match.index)) continue;
-    matches.push({ start: match.index, end: match.index + match[0].length, text: match[0] });
+    matches.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      text: match[0],
+    });
   }
 
   for (let i = matches.length - 1; i >= 0; i--) {
     const m = matches[i];
-    result = result.slice(0, m.start) + '$' + m.text + '$' + result.slice(m.end);
+    result = `${result.slice(0, m.start)}$${m.text}$${result.slice(m.end)}`;
   }
 
   return result;
@@ -151,7 +157,7 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
 
   return (
     <div
-      className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-xl border pl-8 pr-6 py-3 text-xs"
+      className="aui-code-header-root mt-3 flex items-center justify-between rounded-t-xl border py-3 pr-6 pl-8 text-xs"
       style={{
         background: "#1e1e1e",
         borderColor: "#3c3c3c",
@@ -345,7 +351,7 @@ const defaultComponents = memoizeMarkdownComponents({
   pre: ({ className, ...props }) => (
     <pre
       className={cn(
-        "aui-md-pre overflow-x-auto overflow-y-hidden rounded-b-xl rounded-t-none border border-t-0 pl-8 pr-6 py-5 text-[13px] leading-[1.8] font-mono selection:bg-[#264f78] whitespace-pre [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-[#2d2d2d] [&::-webkit-scrollbar-thumb]:bg-[#555] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb:hover]:bg-[#777]",
+        "aui-md-pre overflow-x-auto overflow-y-hidden whitespace-pre rounded-t-none rounded-b-xl border border-t-0 py-5 pr-6 pl-8 font-mono text-[13px] leading-[1.8] selection:bg-[#264f78] [&::-webkit-scrollbar-thumb:hover]:bg-[#777] [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-[#555] [&::-webkit-scrollbar-track]:bg-[#2d2d2d] [&::-webkit-scrollbar]:h-2",
         className,
       )}
       style={{

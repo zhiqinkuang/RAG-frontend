@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, MessagesSquare, User, Settings, BookOpen } from "lucide-react";
+import { LogOut, MessagesSquare, User, BookOpen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,23 +15,28 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { useI18n } from "@/lib/i18n";
-import { getStoredRagUser, clearStoredRagAuth, clearAllChatData } from "@/lib/rag-auth";
+import {
+  getStoredRagUser,
+  clearStoredRagAuth,
+  clearAllChatData,
+} from "@/lib/rag-auth";
 import { SettingsDialog } from "@/components/settings-dialog";
 
-const STORAGE_KEY = "chat-settings";
+const _STORAGE_KEY = "chat-settings";
 
 export function ThreadListSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   const { t } = useI18n();
   const router = useRouter();
-  const [ragUser, setRagUser] = React.useState<ReturnType<typeof getStoredRagUser>>(null);
+  const [ragUser, setRagUser] =
+    React.useState<ReturnType<typeof getStoredRagUser>>(null);
   const [mounted, setMounted] = React.useState(false);
 
   // 监听用户信息变化
   React.useEffect(() => {
     setMounted(true);
-    
+
     const updateUser = () => {
       setRagUser(getStoredRagUser());
     };
@@ -43,12 +48,12 @@ export function ThreadListSidebar({
     const handleStorageChange = () => {
       updateUser();
     };
-    
+
     // 监听自定义事件（同标签页内的登录/登出）
     const handleAuthChange = () => {
       updateUser();
     };
-    
+
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("rag-auth-changed", handleAuthChange);
 
@@ -149,7 +154,7 @@ export function ThreadListSidebar({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">
+              <div className="truncate font-medium text-sm">
                 {ragUser.username}
               </div>
               <div className="truncate text-muted-foreground text-xs">
@@ -169,7 +174,9 @@ export function ThreadListSidebar({
           </div>
         ) : (
           <div className="flex items-center justify-between p-2">
-            <span className="text-muted-foreground text-sm">{t.notLoggedIn}</span>
+            <span className="text-muted-foreground text-sm">
+              {t.notLoggedIn}
+            </span>
             <div className="flex gap-1">
               <SettingsDialog />
             </div>

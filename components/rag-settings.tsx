@@ -43,7 +43,10 @@ interface RagSettingsProps {
   selectedKbId?: number;
 }
 
-export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettingsProps) {
+export function RagSettings({
+  onKnowledgeBaseChange,
+  selectedKbId,
+}: RagSettingsProps) {
   const { t } = useI18n();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
@@ -61,7 +64,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   // 文档列表
   const [documents, setDocuments] = useState<Document[]>([]);
   const [docLoading, setDocLoading] = useState(false);
-  const [docTotal, setDocTotal] = useState(0);
+  const [_docTotal, setDocTotal] = useState(0);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // 上传
@@ -89,12 +92,16 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   // 组件加载时测试连接
   useEffect(() => {
     if (!isLoggedIn) return;
-    
+
     // 测试后端连接
     const testConnection = async () => {
       try {
         const res = await listKnowledgeBases(1, 1);
-        if (res.code === 10002 || res.message?.includes("token") || res.message?.includes("Token")) {
+        if (
+          res.code === 10002 ||
+          res.message?.includes("token") ||
+          res.message?.includes("Token")
+        ) {
           // Token 无效，清除登录状态
           console.log("Token invalid, clearing auth");
           setIsLoggedIn(false);
@@ -104,7 +111,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
         console.error("Connection test failed:", e);
       }
     };
-    
+
     testConnection();
   }, [isLoggedIn]);
 
@@ -126,7 +133,9 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     } catch (e) {
       const msg = e instanceof Error ? e.message : "网络错误";
       if (msg.includes("无法连接") || msg.includes("Failed to fetch")) {
-        toast.error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+        toast.error(
+          "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+        );
       } else {
         toast.error(msg);
       }
@@ -159,15 +168,17 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
   useEffect(() => {
     // 检查是否有处理中或待处理的文档
     // 注意：进度100%但状态仍为1时也需要继续轮询，直到后端状态更新为2
-    const hasProcessing = documents.some(d => d.status === 0 || d.status === 1);
-    
+    const hasProcessing = documents.some(
+      (d) => d.status === 0 || d.status === 1,
+    );
+
     if (hasProcessing && expandedKb) {
       // 每 2 秒轮询一次
       pollingRef.current = setInterval(() => {
         loadDocuments(expandedKb, true);
       }, 2000);
     }
-    
+
     return () => {
       if (pollingRef.current) {
         clearInterval(pollingRef.current);
@@ -246,22 +257,27 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
       const res = await uploadDocuments(expandedKb, uploadFiles);
       if (res.code === 0) {
         const docs = res.data.documents || [];
-        const successDocs = docs.filter(d => d.status !== "error");
-        const failedDocs = docs.filter(d => d.status === "error");
-        
+        const successDocs = docs.filter((d) => d.status !== "error");
+        const failedDocs = docs.filter((d) => d.status === "error");
+
         // 详细反馈每个文件的状态
         if (failedDocs.length === 0) {
           toast.success(`成功上传 ${successDocs.length} 个文件`);
         } else {
           // 显示失败原因
-          const errorMessages = failedDocs.map(d => `${d.file_name}: ${d.error || "未知错误"}`).join("\n");
+          const errorMessages = failedDocs
+            .map((d) => `${d.file_name}: ${d.error || "未知错误"}`)
+            .join("\n");
           if (successDocs.length > 0) {
-            toast.warning(`上传完成：${successDocs.length} 个成功，${failedDocs.length} 个失败\n${errorMessages}`, { duration: 5000 });
+            toast.warning(
+              `上传完成：${successDocs.length} 个成功，${failedDocs.length} 个失败\n${errorMessages}`,
+              { duration: 5000 },
+            );
           } else {
             toast.error(`上传失败：\n${errorMessages}`, { duration: 5000 });
           }
         }
-        
+
         setUploadFiles([]);
         loadDocuments(expandedKb);
         loadKnowledgeBases(); // 刷新知识库列表以更新 doc_count
@@ -334,7 +350,10 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     } catch {
       settings = {};
     }
-    localStorage.setItem("chat-settings", JSON.stringify({ ...settings, knowledgeBaseId: kbId }));
+    localStorage.setItem(
+      "chat-settings",
+      JSON.stringify({ ...settings, knowledgeBaseId: kbId }),
+    );
     // 触发事件通知其他组件
     window.dispatchEvent(new CustomEvent("settings-changed"));
     toast.success(`已选择知识库 (ID: ${kbId})`);
@@ -344,7 +363,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <AlertCircle className="mb-2 size-8 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           请先在 API 设置中登录 RAG 账号
         </p>
       </div>
@@ -355,37 +374,37 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
     <div className="space-y-3 sm:space-y-4">
       {/* 工具栏 */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xs sm:text-sm font-medium">知识库管理</h3>
+        <h3 className="font-medium text-xs sm:text-sm">知识库管理</h3>
         <Button
           size="sm"
           variant="outline"
           onClick={() => setShowCreateKb(true)}
-          className="h-7 sm:h-8 px-2 sm:px-3"
+          className="h-7 px-2 sm:h-8 sm:px-3"
         >
           <Plus className="mr-1 size-3.5 sm:size-4" />
-          <span className="hidden xs:inline">新建</span>
+          <span className="xs:inline hidden">新建</span>
         </Button>
       </div>
 
       {/* 创建知识库表单 */}
       {showCreateKb && (
-        <div className="space-y-2.5 sm:space-y-3 rounded-lg border p-2.5 sm:p-3 md:p-4">
+        <div className="space-y-2.5 rounded-lg border p-2.5 sm:space-y-3 sm:p-3 md:p-4">
           <div className="space-y-1">
-            <label className="text-xs font-medium">名称 *</label>
+            <label className="font-medium text-xs">名称 *</label>
             <Input
               value={newKbName}
               onChange={(e) => setNewKbName(e.target.value)}
               placeholder="输入知识库名称"
-              className="h-8 sm:h-9 text-xs sm:text-sm"
+              className="h-8 text-xs sm:h-9 sm:text-sm"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium">描述</label>
+            <label className="font-medium text-xs">描述</label>
             <Input
               value={newKbDesc}
               onChange={(e) => setNewKbDesc(e.target.value)}
               placeholder="可选描述"
-              className="h-8 sm:h-9 text-xs sm:text-sm"
+              className="h-8 text-xs sm:h-9 sm:text-sm"
             />
           </div>
           <div className="flex gap-2">
@@ -393,9 +412,13 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
               size="sm"
               onClick={handleCreateKb}
               disabled={creating || !newKbName.trim()}
-              className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
+              className="h-8 flex-1 text-xs sm:h-9 sm:text-sm"
             >
-              {creating ? <Loader2 className="size-3.5 sm:size-4 animate-spin" /> : "创建"}
+              {creating ? (
+                <Loader2 className="size-3.5 animate-spin sm:size-4" />
+              ) : (
+                "创建"
+              )}
             </Button>
             <Button
               size="sm"
@@ -405,7 +428,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                 setNewKbName("");
                 setNewKbDesc("");
               }}
-              className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
+              className="h-8 flex-1 text-xs sm:h-9 sm:text-sm"
             >
               取消
             </Button>
@@ -417,24 +440,23 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
       <div className="space-y-2">
         {loading ? (
           <div className="flex items-center justify-center py-6 sm:py-8">
-            <Loader2 className="size-5 sm:size-6 animate-spin text-muted-foreground" />
+            <Loader2 className="size-5 animate-spin text-muted-foreground sm:size-6" />
           </div>
         ) : knowledgeBases.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-6 sm:py-8 text-center">
-            <FolderOpen className="mb-2 size-6 sm:size-8 text-muted-foreground" />
-            <p className="text-xs sm:text-sm text-muted-foreground">暂无知识库</p>
-            <p className="text-xs text-muted-foreground">点击上方"新建"创建</p>
+          <div className="flex flex-col items-center justify-center py-6 text-center sm:py-8">
+            <FolderOpen className="mb-2 size-6 text-muted-foreground sm:size-8" />
+            <p className="text-muted-foreground text-xs sm:text-sm">
+              暂无知识库
+            </p>
+            <p className="text-muted-foreground text-xs">点击上方"新建"创建</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-2">
             {knowledgeBases.map((kb) => (
-              <div
-                key={kb.ID}
-                className="rounded-lg border overflow-hidden"
-              >
+              <div key={kb.ID} className="overflow-hidden rounded-lg border">
                 {/* 知识库头部 */}
                 <div
-                  className={`flex items-center gap-1.5 sm:gap-2 p-2 sm:p-2.5 md:p-3 cursor-pointer hover:bg-muted/50 ${
+                  className={`flex cursor-pointer items-center gap-1.5 p-2 hover:bg-muted/50 sm:gap-2 sm:p-2.5 md:p-3 ${
                     selectedKbId === kb.ID ? "bg-primary/5" : ""
                   }`}
                   onClick={() => toggleKb(kb.ID)}
@@ -448,21 +470,23 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                     }}
                   >
                     {expandedKb === kb.ID ? (
-                      <ChevronDown className="size-3.5 sm:size-4 text-muted-foreground" />
+                      <ChevronDown className="size-3.5 text-muted-foreground sm:size-4" />
                     ) : (
-                      <ChevronRight className="size-3.5 sm:size-4 text-muted-foreground" />
+                      <ChevronRight className="size-3.5 text-muted-foreground sm:size-4" />
                     )}
                   </button>
-                  <Database className="size-3.5 sm:size-4 shrink-0 text-primary" />
+                  <Database className="size-3.5 shrink-0 text-primary sm:size-4" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 sm:gap-2">
-                      <span className="truncate text-xs sm:text-sm font-medium">{kb.name}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">
+                      <span className="truncate font-medium text-xs sm:text-sm">
+                        {kb.name}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground text-xs">
                         {kb.doc_count} 文档
                       </span>
                     </div>
                     {kb.description && (
-                      <p className="truncate text-xs text-muted-foreground hidden sm:block">
+                      <p className="hidden truncate text-muted-foreground text-xs sm:block">
                         {kb.description}
                       </p>
                     )}
@@ -487,7 +511,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                         e.stopPropagation();
                         handleDeleteKb(kb.ID);
                       }}
-                      className="size-7 sm:size-8 text-destructive hover:text-destructive"
+                      className="size-7 text-destructive hover:text-destructive sm:size-8"
                     >
                       <Trash2 className="size-3.5 sm:size-4" />
                     </Button>
@@ -499,7 +523,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                   <div className="border-t bg-muted/30">
                     {/* 上传区域 */}
                     <div className="border-b p-2 sm:p-2.5 md:p-3">
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2">
+                      <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-2">
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -512,7 +536,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                           size="sm"
                           variant="outline"
                           onClick={() => fileInputRef.current?.click()}
-                          className="h-7 sm:h-8 w-full sm:w-auto text-xs"
+                          className="h-7 w-full text-xs sm:h-8 sm:w-auto"
                         >
                           <Upload className="mr-1 size-3.5 sm:size-4" />
                           选择文件
@@ -522,10 +546,10 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                             size="sm"
                             onClick={handleUpload}
                             disabled={uploading}
-                            className="h-7 sm:h-8 w-full sm:w-auto text-xs"
+                            className="h-7 w-full text-xs sm:h-8 sm:w-auto"
                           >
                             {uploading ? (
-                              <Loader2 className="size-3.5 sm:size-4 animate-spin" />
+                              <Loader2 className="size-3.5 animate-spin sm:size-4" />
                             ) : (
                               `上传 ${uploadFiles.length} 个文件`
                             )}
@@ -534,21 +558,23 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                       </div>
                       {/* 待上传文件列表 */}
                       {uploadFiles.length > 0 && (
-                        <div className="mt-1.5 sm:mt-2 space-y-1">
+                        <div className="mt-1.5 space-y-1 sm:mt-2">
                           {uploadFiles.map((file, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center gap-1.5 sm:gap-2 rounded bg-background p-1 sm:p-1.5 text-xs"
+                              className="flex items-center gap-1.5 rounded bg-background p-1 text-xs sm:gap-2 sm:p-1.5"
                             >
                               <FileText className="size-3 shrink-0" />
-                              <span className="flex-1 truncate">{file.name}</span>
-                              <span className="text-muted-foreground shrink-0 hidden sm:inline">
+                              <span className="flex-1 truncate">
+                                {file.name}
+                              </span>
+                              <span className="hidden shrink-0 text-muted-foreground sm:inline">
                                 {formatFileSize(file.size)}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => removeFile(idx)}
-                                className="text-muted-foreground hover:text-foreground shrink-0"
+                                className="shrink-0 text-muted-foreground hover:text-foreground"
                               >
                                 <X className="size-3" />
                               </button>
@@ -556,19 +582,19 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                           ))}
                         </div>
                       )}
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1 text-muted-foreground text-xs">
                         支持 PDF、TXT、MD、DOCX 格式
                       </p>
                     </div>
 
                     {/* 文档列表 */}
-                    <div className="max-h-48 sm:max-h-60 overflow-y-auto">
+                    <div className="max-h-48 overflow-y-auto sm:max-h-60">
                       {docLoading ? (
                         <div className="flex items-center justify-center py-3 sm:py-4">
-                          <Loader2 className="size-4 sm:size-5 animate-spin text-muted-foreground" />
+                          <Loader2 className="size-4 animate-spin text-muted-foreground sm:size-5" />
                         </div>
                       ) : documents.length === 0 ? (
-                        <div className="py-3 sm:py-4 text-center text-xs text-muted-foreground">
+                        <div className="py-3 text-center text-muted-foreground text-xs sm:py-4">
                           暂无文档，上传文件开始
                         </div>
                       ) : (
@@ -576,38 +602,49 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                           {documents.map((doc) => (
                             <div
                               key={doc.ID}
-                              className="flex items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 text-xs"
+                              className="flex items-center gap-1.5 p-1.5 text-xs sm:gap-2 sm:p-2"
                             >
-                              <FileText className="size-3.5 sm:size-4 shrink-0 text-muted-foreground" />
+                              <FileText className="size-3.5 shrink-0 text-muted-foreground sm:size-4" />
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1 sm:gap-2">
                                   <span className="truncate font-medium text-xs sm:text-sm">
                                     {doc.file_name}
                                   </span>
-                                  <span className={`shrink-0 text-xs ${getDocStatusColor(doc.status, doc.progress?.percent)}`}>
-                                    {getDocStatusText(doc.status, doc.progress?.percent)}
+                                  <span
+                                    className={`shrink-0 text-xs ${getDocStatusColor(doc.status, doc.progress?.percent)}`}
+                                  >
+                                    {getDocStatusText(
+                                      doc.status,
+                                      doc.progress?.percent,
+                                    )}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground text-xs">
+                                <div className="flex items-center gap-1 text-muted-foreground text-xs sm:gap-2">
                                   <span>{formatFileSize(doc.file_size)}</span>
                                   <span className="hidden sm:inline">•</span>
-                                  <span className="hidden sm:inline">{doc.chunk_count} 分块</span>
+                                  <span className="hidden sm:inline">
+                                    {doc.chunk_count} 分块
+                                  </span>
                                 </div>
                                 {/* 进度条 - 仅在处理中(status=1)且进度未达100%时显示 */}
-                                {doc.status === 1 && doc.progress && doc.progress.percent < 100 && (
-                                  <div className="mt-1">
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-0.5">
-                                      <span>处理中</span>
-                                      <span>{doc.progress.percent}%</span>
+                                {doc.status === 1 &&
+                                  doc.progress &&
+                                  doc.progress.percent < 100 && (
+                                    <div className="mt-1">
+                                      <div className="mb-0.5 flex items-center justify-between text-muted-foreground text-xs">
+                                        <span>处理中</span>
+                                        <span>{doc.progress.percent}%</span>
+                                      </div>
+                                      <div className="h-1 w-full overflow-hidden rounded-full bg-muted sm:h-1.5">
+                                        <div
+                                          className="h-full rounded-full bg-primary transition-all duration-300"
+                                          style={{
+                                            width: `${Math.min(doc.progress.percent, 100)}%`,
+                                          }}
+                                        />
+                                      </div>
                                     </div>
-                                    <div className="h-1 sm:h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                                      <div 
-                                        className="h-full bg-primary transition-all duration-300 rounded-full"
-                                        style={{ width: `${Math.min(doc.progress.percent, 100)}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                )}
+                                  )}
                                 {doc.error_msg && (
                                   <p className="truncate text-red-500 text-xs">
                                     {doc.error_msg}
@@ -630,7 +667,7 @@ export function RagSettings({ onKnowledgeBaseChange, selectedKbId }: RagSettings
                                   size="icon-sm"
                                   variant="ghost"
                                   onClick={() => handleDeleteDoc(doc.ID)}
-                                  className="size-6 sm:size-7 text-destructive hover:text-destructive"
+                                  className="size-6 text-destructive hover:text-destructive sm:size-7"
                                 >
                                   <Trash2 className="size-3" />
                                 </Button>

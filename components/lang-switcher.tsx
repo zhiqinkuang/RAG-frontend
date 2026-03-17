@@ -13,7 +13,7 @@ export function LangSwitcher() {
       type="button"
       variant="ghost"
       size="sm"
-      className="min-h-8 px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+      className="min-h-8 px-2 font-medium text-muted-foreground text-xs hover:text-foreground"
       onClick={toggle}
       aria-label={lang === "zh" ? "Switch to English" : "切换到中文"}
     >

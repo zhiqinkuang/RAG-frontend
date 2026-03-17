@@ -1,6 +1,6 @@
 /**
  * API 请求拦截器：处理 Token 过期自动跳转登录页
- * 
+ *
  * 当 API 返回 401 响应时，自动：
  * 1. 清除本地存储的 token
  * 2. 触发认证状态变化事件
@@ -33,10 +33,11 @@ export function handleTokenExpired(): void {
   // 跳转到登录页
   // 使用 window.location.href 确保完全刷新页面状态
   const currentPath = window.location.pathname;
-  const loginUrl = currentPath && currentPath !== "/" 
-    ? `/login?redirect=${encodeURIComponent(currentPath)}`
-    : "/login";
-  
+  const loginUrl =
+    currentPath && currentPath !== "/"
+      ? `/login?redirect=${encodeURIComponent(currentPath)}`
+      : "/login";
+
   window.location.href = loginUrl;
 }
 
@@ -52,10 +53,10 @@ export function isUnauthorizedResponse(response: Response): boolean {
  */
 export function isAuthError(error: unknown): boolean {
   if (!error) return false;
-  
+
   const message = error instanceof Error ? error.message : String(error);
   const lowerMessage = message.toLowerCase();
-  
+
   return (
     lowerMessage.includes("401") ||
     lowerMessage.includes("unauthorized") ||
@@ -73,7 +74,7 @@ export function isAuthError(error: unknown): boolean {
  */
 export async function authFetch(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<Response> {
   const response = await fetch(input, init);
 
@@ -91,17 +92,18 @@ export async function authFetch(
  */
 export async function authFetchJson<T = unknown>(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<T> {
   const response = await authFetch(input, init);
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(
-      (errorData as { error?: string }).error || `Request failed: ${response.status}`
+      (errorData as { error?: string }).error ||
+        `Request failed: ${response.status}`,
     );
   }
-  
+
   return response.json() as Promise<T>;
 }
 
@@ -113,19 +115,26 @@ export function setupFetchInterceptor(): void {
   if (typeof window === "undefined") return;
 
   const originalFetch = window.fetch;
-  
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+
+  window.fetch = async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
     const response = await originalFetch(input, init);
 
     // 只拦截 API 请求的 401 响应
     const url = typeof input === "string" ? input : (input as Request).url;
     const isApiRequest = url.startsWith("/") || url.includes("/api/");
-    
+
     if (isApiRequest && isUnauthorizedResponse(response)) {
       // 排除登录、注册、刷新 token 等接口
-      const excludedPaths = ["/api/auth/login", "/api/auth/register", "/api/auth/refresh"];
-      const isExcluded = excludedPaths.some(path => url.includes(path));
-      
+      const excludedPaths = [
+        "/api/auth/login",
+        "/api/auth/register",
+        "/api/auth/refresh",
+      ];
+      const isExcluded = excludedPaths.some((path) => url.includes(path));
+
       if (!isExcluded) {
         handleTokenExpired();
       }

@@ -32,15 +32,15 @@ export function createCSRFToken(): string {
     token,
     createdAt: Date.now(),
   };
-  
+
   // 存储到 sessionStorage（仅在当前会话有效）
   storeCSRFToken(token);
-  
+
   // 同时存储元数据用于过期检查
   if (typeof window !== "undefined") {
     sessionStorage.setItem(`${CSRF_TOKEN_KEY}_meta`, JSON.stringify(meta));
   }
-  
+
   return token;
 }
 
@@ -51,12 +51,15 @@ export function createCSRFToken(): string {
  */
 export function getValidCSRFToken(): string {
   const storedToken = getStoredCSRFToken();
-  const metaRaw = typeof window !== "undefined" ? sessionStorage.getItem(`${CSRF_TOKEN_KEY}_meta`) : null;
-  
+  const metaRaw =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem(`${CSRF_TOKEN_KEY}_meta`)
+      : null;
+
   if (storedToken && metaRaw) {
     try {
       const meta = JSON.parse(metaRaw) as CSRFTokenMeta;
-      
+
       // 检查是否过期
       if (Date.now() - meta.createdAt < CSRF_TOKEN_EXPIRY) {
         return storedToken;
@@ -65,7 +68,7 @@ export function getValidCSRFToken(): string {
       // 解析失败，生成新 Token
     }
   }
-  
+
   // 生成新 Token
   return createCSRFToken();
 }
@@ -75,14 +78,19 @@ export function getValidCSRFToken(): string {
  * @param requestToken 请求中的 Token
  * @returns 是否有效
  */
-export function verifyCSRFToken(requestToken: string | null | undefined): boolean {
+export function verifyCSRFToken(
+  requestToken: string | null | undefined,
+): boolean {
   if (!requestToken) return false;
-  
+
   const storedToken = getStoredCSRFToken();
   if (!storedToken) return false;
-  
+
   // 检查过期
-  const metaRaw = typeof window !== "undefined" ? sessionStorage.getItem(`${CSRF_TOKEN_KEY}_meta`) : null;
+  const metaRaw =
+    typeof window !== "undefined"
+      ? sessionStorage.getItem(`${CSRF_TOKEN_KEY}_meta`)
+      : null;
   if (metaRaw) {
     try {
       const meta = JSON.parse(metaRaw) as CSRFTokenMeta;
@@ -93,7 +101,7 @@ export function verifyCSRFToken(requestToken: string | null | undefined): boolea
       return false;
     }
   }
-  
+
   return validateCSRFToken(requestToken, storedToken);
 }
 
@@ -102,7 +110,9 @@ export function verifyCSRFToken(requestToken: string | null | undefined): boolea
  * @param formData 表单数据对象
  * @returns 添加了 CSRF Token 的表单数据
  */
-export function addCSRFToFormData<T extends Record<string, unknown>>(formData: T): T & { _csrf: string } {
+export function addCSRFToFormData<T extends Record<string, unknown>>(
+  formData: T,
+): T & { _csrf: string } {
   return {
     ...formData,
     _csrf: getValidCSRFToken(),
@@ -127,8 +137,11 @@ export function addCSRFToHeaders(headers: HeadersInit = {}): HeadersInit {
  */
 export function createCSRFProtectedFetch(): typeof fetch {
   const originalFetch = window.fetch;
-  
-  return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+
+  return async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
     // 只对同源请求添加 CSRF Token
     let url: string;
     if (typeof input === "string") {
@@ -140,18 +153,24 @@ export function createCSRFProtectedFetch(): typeof fetch {
     } else {
       url = String(input);
     }
-    
+
     // 检查是否是同源请求
-    const isSameOrigin = url.startsWith("/") || url.startsWith(window.location.origin);
-    
-    if (isSameOrigin && init?.method && init.method.toUpperCase() !== "GET" && init.method.toUpperCase() !== "HEAD") {
+    const isSameOrigin =
+      url.startsWith("/") || url.startsWith(window.location.origin);
+
+    if (
+      isSameOrigin &&
+      init?.method &&
+      init.method.toUpperCase() !== "GET" &&
+      init.method.toUpperCase() !== "HEAD"
+    ) {
       // 获取或创建 CSRF Token
       const token = getValidCSRFToken();
-      
+
       // 添加到请求头
       const headers = new Headers(init.headers);
       headers.set("X-CSRF-Token", token);
-      
+
       // 如果有请求体且是 JSON，也添加到请求体
       if (init.body && typeof init.body === "string") {
         try {
@@ -161,10 +180,10 @@ export function createCSRFProtectedFetch(): typeof fetch {
           // 不是 JSON，保持原样
         }
       }
-      
+
       init = { ...init, headers };
     }
-    
+
     return originalFetch(input, init);
   };
 }
@@ -175,10 +194,10 @@ export function createCSRFProtectedFetch(): typeof fetch {
  */
 export function initCSRFProtection(): void {
   if (typeof window === "undefined") return;
-  
+
   // 确保有有效的 CSRF Token
   getValidCSRFToken();
-  
+
   // 覆盖全局 fetch（可选）
   // window.fetch = createCSRFProtectedFetch();
 }
@@ -189,10 +208,13 @@ export function initCSRFProtection(): void {
  * @param request 请求对象
  * @returns 验证结果
  */
-export function verifyCSRFMiddleware(request: Request): { valid: boolean; error?: string } {
+export function verifyCSRFMiddleware(request: Request): {
+  valid: boolean;
+  error?: string;
+} {
   // 从请求头获取 Token
   const headerToken = request.headers.get("X-CSRF-Token");
-  
+
   // 从请求体获取 Token（如果是 JSON）
   let bodyToken: string | undefined;
   const contentType = request.headers.get("content-type");
@@ -200,13 +222,13 @@ export function verifyCSRFMiddleware(request: Request): { valid: boolean; error?
     // 注意：这里不能直接读取 body，因为 body 只能读取一次
     // 需要在路由处理函数中手动验证
   }
-  
+
   const token = headerToken || bodyToken;
-  
+
   if (!token) {
     return { valid: false, error: "CSRF token missing" };
   }
-  
+
   // 服务端验证需要从 session 或 cookie 中获取存储的 token
   // 这里返回 token 供后续验证
   return { valid: true };
@@ -220,7 +242,7 @@ export function useCSRFToken(): { token: string; refreshToken: () => string } {
   if (typeof window === "undefined") {
     return { token: "", refreshToken: () => "" };
   }
-  
+
   return {
     token: getValidCSRFToken(),
     refreshToken: createCSRFToken,
@@ -235,19 +257,20 @@ export function useCSRFToken(): { token: string; refreshToken: () => string } {
  */
 export function withCSRFProtection(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): RequestInit {
   // 只对同源非 GET 请求添加 CSRF Token
-  const isSameOrigin = url.startsWith("/") || url.startsWith(window.location.origin);
+  const isSameOrigin =
+    url.startsWith("/") || url.startsWith(window.location.origin);
   const method = (options.method || "GET").toUpperCase();
-  
+
   if (isSameOrigin && method !== "GET" && method !== "HEAD") {
     const token = getValidCSRFToken();
     const headers = new Headers(options.headers);
     headers.set("X-CSRF-Token", token);
-    
+
     return { ...options, headers };
   }
-  
+
   return options;
 }

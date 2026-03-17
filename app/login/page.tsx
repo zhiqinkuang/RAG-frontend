@@ -17,7 +17,8 @@ const STORAGE_KEY = "chat-settings";
 const LOCKOUT_DURATION = 3000;
 
 /** 默认 RAG 后端地址（优先使用环境变量） */
-const DEFAULT_RAG_BASE_URL = process.env.NEXT_PUBLIC_RAG_API_URL || "http://127.0.0.1:8080";
+const DEFAULT_RAG_BASE_URL =
+  process.env.NEXT_PUBLIC_RAG_API_URL || "http://127.0.0.1:8080";
 
 export default function LoginPage() {
   const { t } = useI18n();
@@ -27,23 +28,26 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // 验证状态
   const [emailError, setEmailError] = useState<string | null>(null);
-  
+
   // 防暴力破解状态
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutCountdown, setLockoutCountdown] = useState(0);
 
   // 实时验证邮箱
-  const validateEmailField = useCallback((value: string) => {
-    if (value.trim() === "") {
-      setEmailError(null);
-      return;
-    }
-    const result = validateEmail(value);
-    setEmailError(result.valid ? null : t.invalidEmail);
-  }, [t.invalidEmail]);
+  const validateEmailField = useCallback(
+    (value: string) => {
+      if (value.trim() === "") {
+        setEmailError(null);
+        return;
+      }
+      const result = validateEmail(value);
+      setEmailError(result.valid ? null : t.invalidEmail);
+    },
+    [t.invalidEmail],
+  );
 
   // 防暴力破解倒计时
   useEffect(() => {
@@ -82,7 +86,11 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await ragLogin(DEFAULT_RAG_BASE_URL, email.trim().toLowerCase(), password);
+      const res = await ragLogin(
+        DEFAULT_RAG_BASE_URL,
+        email.trim().toLowerCase(),
+        password,
+      );
       setStoredRagAuth(res.token, res.user);
       const settings = {
         provider: "rag",
@@ -108,12 +116,14 @@ export default function LoginPage() {
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-sm space-y-4 sm:space-y-6">
         <div className="text-center">
-          <h1 className="text-xl sm:text-2xl font-semibold">{t.loginTitle}</h1>
-          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">{t.ragAccount}</p>
+          <h1 className="font-semibold text-xl sm:text-2xl">{t.loginTitle}</h1>
+          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">
+            {t.ragAccount}
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
-            <label htmlFor="email" className="text-xs sm:text-sm font-medium">
+            <label htmlFor="email" className="font-medium text-xs sm:text-sm">
               {t.email}
             </label>
             <Input
@@ -126,7 +136,7 @@ export default function LoginPage() {
                 validateEmailField(e.target.value);
               }}
               onBlur={() => validateEmailField(email)}
-              className={`h-9 sm:h-10 text-sm ${emailError ? "border-destructive" : ""}`}
+              className={`h-9 text-sm sm:h-10 ${emailError ? "border-destructive" : ""}`}
               aria-invalid={!!emailError}
               aria-describedby={emailError ? "email-error" : undefined}
               required
@@ -138,7 +148,10 @@ export default function LoginPage() {
             )}
           </div>
           <div className="space-y-2">
-            <label htmlFor="password" className="text-xs sm:text-sm font-medium">
+            <label
+              htmlFor="password"
+              className="font-medium text-xs sm:text-sm"
+            >
               {t.password}
             </label>
             <div className="relative">
@@ -148,16 +161,20 @@ export default function LoginPage() {
                 placeholder={t.password}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-9 sm:h-10 text-sm pr-10"
+                className="h-9 pr-10 text-sm sm:h-10"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label={showPassword ? "隐藏密码" : "显示密码"}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </button>
             </div>
           </div>
@@ -168,7 +185,7 @@ export default function LoginPage() {
           )}
           <Button
             type="submit"
-            className="w-full h-9 sm:h-10"
+            className="h-9 w-full sm:h-10"
             disabled={loading || isLocked}
             aria-disabled={loading || isLocked}
           >
@@ -181,7 +198,10 @@ export default function LoginPage() {
         </form>
         <p className="text-center text-muted-foreground text-xs sm:text-sm">
           {t.notLoggedIn}{" "}
-          <Link href="/register" className="text-primary underline underline-offset-2">
+          <Link
+            href="/register"
+            className="text-primary underline underline-offset-2"
+          >
             {t.register}
           </Link>
         </p>

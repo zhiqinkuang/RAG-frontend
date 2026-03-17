@@ -42,7 +42,7 @@ const MAX_REFRESH_RETRIES = 3;
  */
 export function isTokenExpired(
   expireTime: string | number | null,
-  threshold: number = TOKEN_REFRESH_THRESHOLD
+  threshold: number = TOKEN_REFRESH_THRESHOLD,
 ): boolean {
   if (!expireTime) return true;
 
@@ -52,7 +52,7 @@ export function isTokenExpired(
     if (typeof expireTime === "string") {
       // 尝试解析 ISO 字符串或时间戳字符串
       const parsed = Date.parse(expireTime);
-      if (isNaN(parsed)) {
+      if (Number.isNaN(parsed)) {
         // 可能是 Unix 时间戳字符串
         expireTimestamp = parseInt(expireTime, 10) * 1000;
       } else {
@@ -62,7 +62,7 @@ export function isTokenExpired(
       expireTimestamp = expireTime;
     }
 
-    if (isNaN(expireTimestamp)) return true;
+    if (Number.isNaN(expireTimestamp)) return true;
 
     return Date.now() >= expireTimestamp - threshold;
   } catch {
@@ -103,7 +103,11 @@ export function getStoredRagUser(): RagUser | null {
 /**
  * 存储认证信息
  */
-export function setStoredRagAuth(token: string, user: RagUser, expire?: string): void {
+export function setStoredRagAuth(
+  token: string,
+  user: RagUser,
+  expire?: string,
+): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(RAG_TOKEN_KEY, token);
   localStorage.setItem(RAG_USER_KEY, JSON.stringify(user));
@@ -128,21 +132,21 @@ export function clearStoredRagAuth(): void {
  */
 export function clearAllChatData(): void {
   if (typeof window === "undefined") return;
-  
+
   // 清除对话列表
   localStorage.removeItem("chat-threads");
-  
+
   // 清除所有对话消息
   // 遍历 localStorage 找到所有 chat-messages:* 的 key
   const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith("chat-messages:")) {
+    if (key?.startsWith("chat-messages:")) {
       keysToRemove.push(key);
     }
   }
-  keysToRemove.forEach(key => localStorage.removeItem(key));
-  
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
+
   // 清除聊天设置中的敏感信息（保留非敏感设置如主题、语言）
   try {
     const raw = localStorage.getItem("chat-settings");
@@ -169,7 +173,7 @@ export function clearAllChatData(): void {
  */
 export async function tryRefreshToken(
   baseURL: string,
-  retries: number = MAX_REFRESH_RETRIES
+  retries: number = MAX_REFRESH_RETRIES,
 ): Promise<LoginResponse | null> {
   const token = getStoredRagToken();
   if (!token) return null;
@@ -183,16 +187,21 @@ export async function tryRefreshToken(
       return res;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error("Refresh failed");
-      
+
       // 如果是 401 错误，说明 Token 已完全失效，不需要重试
-      if (lastError.message.includes("401") || lastError.message.includes("Unauthorized")) {
+      if (
+        lastError.message.includes("401") ||
+        lastError.message.includes("Unauthorized")
+      ) {
         clearStoredRagAuth();
         return null;
       }
 
       // 等待一段时间后重试
       if (attempt < retries - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+        await new Promise((resolve) =>
+          setTimeout(resolve, 1000 * (attempt + 1)),
+        );
       }
     }
   }
@@ -208,7 +217,7 @@ export async function tryRefreshToken(
  */
 export async function ensureValidToken(baseURL: string): Promise<boolean> {
   const expire = getStoredTokenExpire();
-  
+
   // 如果 Token 未过期，直接返回
   if (!isTokenExpired(expire)) {
     return true;
@@ -227,74 +236,91 @@ export async function ensureValidToken(baseURL: string): Promise<boolean> {
 function sanitizeErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     const message = error.message;
-    
+
     // 如果消息已经是中文，直接返回
     if (/[\u4e00-\u9fa5]/.test(message)) {
       return message;
     }
-    
+
     // 英文错误消息处理
     const lowerMessage = message.toLowerCase();
-    
+
     // 网络错误
-    if (lowerMessage.includes("network") || lowerMessage.includes("fetch") || lowerMessage.includes("failed to fetch")) {
+    if (
+      lowerMessage.includes("network") ||
+      lowerMessage.includes("fetch") ||
+      lowerMessage.includes("failed to fetch")
+    ) {
       return "网络连接失败，请检查网络设置";
     }
-    
+
     // 超时错误
     if (lowerMessage.includes("timeout")) {
       return "请求超时，请稍后重试";
     }
-    
+
     // 认证错误 - 登录时表示用户名密码错误
     if (lowerMessage.includes("401") || lowerMessage.includes("unauthorized")) {
       return "用户名或密码错误";
     }
-    
+
     // 权限错误
     if (lowerMessage.includes("403") || lowerMessage.includes("forbidden")) {
       return "没有权限执行此操作";
     }
-    
+
     // 服务器错误
-    if (lowerMessage.includes("500") || lowerMessage.includes("server error") || lowerMessage.includes("internal error")) {
+    if (
+      lowerMessage.includes("500") ||
+      lowerMessage.includes("server error") ||
+      lowerMessage.includes("internal error")
+    ) {
       return "服务器错误，请稍后重试";
     }
-    
+
     // 服务不可用
-    if (lowerMessage.includes("503") || lowerMessage.includes("service unavailable")) {
+    if (
+      lowerMessage.includes("503") ||
+      lowerMessage.includes("service unavailable")
+    ) {
       return "服务暂时不可用，请稍后重试";
     }
-    
+
     // 连接被拒绝
-    if (lowerMessage.includes("econnrefused") || lowerMessage.includes("connection refused")) {
+    if (
+      lowerMessage.includes("econnrefused") ||
+      lowerMessage.includes("connection refused")
+    ) {
       return "无法连接到服务器，请检查服务是否启动";
     }
-    
+
     // DNS 解析失败
     if (lowerMessage.includes("enotfound") || lowerMessage.includes("dns")) {
       return "无法解析服务器地址，请检查网络配置";
     }
-    
+
     // 请求体过大
     if (lowerMessage.includes("413") || lowerMessage.includes("too large")) {
       return "请求数据过大";
     }
-    
+
     // 请求频率限制
     if (lowerMessage.includes("429") || lowerMessage.includes("too many")) {
       return "请求过于频繁，请稍后重试";
     }
-    
+
     // 登录失败（API 返回的具体错误）
-    if (lowerMessage.includes("login failed") || lowerMessage.includes("credentials")) {
+    if (
+      lowerMessage.includes("login failed") ||
+      lowerMessage.includes("credentials")
+    ) {
       return "用户名或密码错误";
     }
-    
+
     // 其他错误返回通用消息
     return "操作失败，请稍后重试";
   }
-  
+
   return "发生未知错误";
 }
 
@@ -304,7 +330,7 @@ function sanitizeErrorMessage(error: unknown): string {
 export async function ragLogin(
   baseURL: string,
   email: string,
-  password: string
+  password: string,
 ): Promise<LoginResponse> {
   try {
     const res = await fetch("/api/auth/login", {
@@ -329,7 +355,7 @@ export async function ragRegister(
   baseURL: string,
   username: string,
   email: string,
-  password: string
+  password: string,
 ): Promise<RegisterResponse> {
   try {
     const res = await fetch("/api/auth/register", {
@@ -350,7 +376,10 @@ export async function ragRegister(
 /**
  * 刷新 Token
  */
-export async function ragRefresh(baseURL: string, token: string): Promise<LoginResponse> {
+export async function ragRefresh(
+  baseURL: string,
+  token: string,
+): Promise<LoginResponse> {
   try {
     const res = await fetch("/api/auth/refresh", {
       method: "POST",
@@ -373,7 +402,10 @@ export async function ragRefresh(baseURL: string, token: string): Promise<LoginR
 /**
  * 获取用户资料（带自动刷新）
  */
-export async function ragGetProfile(baseURL: string, token: string): Promise<{ user: RagUser }> {
+export async function ragGetProfile(
+  baseURL: string,
+  token: string,
+): Promise<{ user: RagUser }> {
   try {
     // 检查 Token 是否需要刷新
     const expire = getStoredTokenExpire();
@@ -392,7 +424,9 @@ export async function ragGetProfile(baseURL: string, token: string): Promise<{ u
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error((data as { error?: string }).error ?? "Get profile failed");
+      throw new Error(
+        (data as { error?: string }).error ?? "Get profile failed",
+      );
     }
     return data as { user: RagUser };
   } catch (error) {
@@ -406,7 +440,7 @@ export async function ragGetProfile(baseURL: string, token: string): Promise<{ u
 export async function ragUpdateProfile(
   baseURL: string,
   token: string,
-  patch: { username?: string; avatar?: string }
+  patch: { username?: string; avatar?: string },
 ): Promise<{ user: RagUser }> {
   try {
     // 检查 Token 是否需要刷新
@@ -428,7 +462,9 @@ export async function ragUpdateProfile(
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error((data as { error?: string }).error ?? "Update profile failed");
+      throw new Error(
+        (data as { error?: string }).error ?? "Update profile failed",
+      );
     }
     return data as { user: RagUser };
   } catch (error) {
@@ -442,7 +478,7 @@ export async function ragUpdateProfile(
 export async function authFetch(
   baseURL: string,
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit,
 ): Promise<Response> {
   // 检查 Token 是否需要刷新
   const expire = getStoredTokenExpire();

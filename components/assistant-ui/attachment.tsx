@@ -47,7 +47,10 @@ function getFileTypeInfo(contentType: string): FileTypeInfo {
     return { Icon: FileText, color: "text-blue-500", label: "DOC" };
   if (contentType.includes("spreadsheet") || contentType.includes("excel"))
     return { Icon: FileSpreadsheet, color: "text-green-600", label: "XLS" };
-  if (contentType.includes("presentation") || contentType.includes("powerpoint"))
+  if (
+    contentType.includes("presentation") ||
+    contentType.includes("powerpoint")
+  )
     return { Icon: Presentation, color: "text-orange-500", label: "PPT" };
   if (contentType.startsWith("video/"))
     return { Icon: FileVideo, color: "text-pink-500", label: "VID" };
@@ -139,7 +142,9 @@ const AttachmentPreviewDialog: FC<PropsWithChildren> = ({ children }) => {
 
 const AttachmentThumb: FC = () => {
   const isImage = useAuiState((s) => s.attachment.type === "image");
-  const contentType = useAuiState((s) => (s.attachment as { contentType?: string }).contentType ?? "");
+  const contentType = useAuiState(
+    (s) => (s.attachment as { contentType?: string }).contentType ?? "",
+  );
   const src = useAttachmentSrc();
   const { Icon, color, label } = getFileTypeInfo(contentType);
 
@@ -150,10 +155,18 @@ const AttachmentThumb: FC = () => {
         alt="Attachment preview"
         className="aui-attachment-tile-image object-cover"
       />
-      <AvatarFallback delayMs={isImage ? 200 : 0} className="rounded-none bg-muted">
+      <AvatarFallback
+        delayMs={isImage ? 200 : 0}
+        className="rounded-none bg-muted"
+      >
         <div className="flex h-full w-full flex-col items-center justify-center gap-0.5">
           <Icon className={cn("size-6", color)} />
-          <span className={cn("text-[9px] font-bold uppercase tracking-wider leading-none", color)}>
+          <span
+            className={cn(
+              "font-bold text-[9px] uppercase leading-none tracking-wider",
+              color,
+            )}
+          >
             {label}
           </span>
         </div>
@@ -164,7 +177,6 @@ const AttachmentThumb: FC = () => {
 
 const AttachmentUI: FC = () => {
   const aui = useAui();
-  const { t } = useI18n();
   const isComposer = aui.attachment.source === "composer";
 
   const isImage = useAuiState((s) => s.attachment.type === "image");

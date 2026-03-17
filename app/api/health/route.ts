@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
-import { join } from "path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 /**
  * 获取应用版本号
@@ -14,7 +14,7 @@ async function getAppVersion(): Promise<string> {
   if (process.env.NEXT_PUBLIC_APP_VERSION) {
     return process.env.NEXT_PUBLIC_APP_VERSION;
   }
-  
+
   // 尝试读取构建时生成的版本文件
   try {
     const versionPath = join(process.cwd(), ".next", "BUILD_VERSION");
@@ -28,13 +28,13 @@ async function getAppVersion(): Promise<string> {
 
 export async function GET() {
   const version = await getAppVersion();
-  
+
   return NextResponse.json(
     {
       status: "healthy",
       timestamp: new Date().toISOString(),
       version,
     },
-    { status: 200 }
+    { status: 200 },
   );
 }

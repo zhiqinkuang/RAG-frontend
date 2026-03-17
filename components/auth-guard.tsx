@@ -17,8 +17,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
-  const isPublic = pathname != null && PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  const isProtected = pathname != null && PROTECTED_PATHS.some((p) => pathname === p);
+  const isPublic =
+    pathname != null &&
+    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  const isProtected =
+    pathname != null && PROTECTED_PATHS.some((p) => pathname === p);
 
   // 处理 token 过期：清除认证信息并跳转登录页
   const handleTokenExpired = useCallback(() => {
@@ -29,10 +32,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // 构建登录页 URL，带上重定向参数
     const currentPath = pathname || "/";
-    const loginUrl = currentPath !== "/" 
-      ? `/login?redirect=${encodeURIComponent(currentPath)}`
-      : "/login";
-    
+    const loginUrl =
+      currentPath !== "/"
+        ? `/login?redirect=${encodeURIComponent(currentPath)}`
+        : "/login";
+
     // 使用 router.replace 避免产生历史记录
     router.replace(loginUrl);
     setAllowed(false);
@@ -59,9 +63,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!token) {
       // 未登录，跳转到登录页
       const currentPath = pathname || "/";
-      const loginUrl = currentPath !== "/"
-        ? `/login?redirect=${encodeURIComponent(currentPath)}`
-        : "/login";
+      const loginUrl =
+        currentPath !== "/"
+          ? `/login?redirect=${encodeURIComponent(currentPath)}`
+          : "/login";
       router.replace(loginUrl);
       setAllowed(false);
     } else {
@@ -108,7 +113,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // 公开路径直接渲染
   if (isPublic) return <>{children}</>;
-  
+
   // 检查中或未授权时显示加载状态
   if (checking || !allowed) {
     return (
@@ -117,6 +122,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   return <>{children}</>;
 }

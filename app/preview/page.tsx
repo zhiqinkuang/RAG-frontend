@@ -2,7 +2,14 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Download, ZoomIn, ZoomOut, AlertCircle, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  ZoomIn,
+  ZoomOut,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStoredRagToken } from "@/lib/rag-auth";
 
@@ -49,7 +56,7 @@ function PreviewContent() {
 
   if (!docId) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">缺少文档参数</p>
       </div>
     );
@@ -62,10 +69,10 @@ function PreviewContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-4">
         <AlertCircle className="h-12 w-12 text-destructive" />
-        <p className="text-lg font-medium">{error}</p>
-        <p className="text-sm text-muted-foreground">文档 ID: {docId}</p>
+        <p className="font-medium text-lg">{error}</p>
+        <p className="text-muted-foreground text-sm">文档 ID: {docId}</p>
         <Button variant="outline" onClick={() => window.close()}>
           关闭
         </Button>
@@ -74,14 +81,17 @@ function PreviewContent() {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
-      <div className="flex items-center justify-between px-4 py-2 bg-background border-b shrink-0">
+    <div className="flex min-h-screen flex-col bg-muted/30">
+      <div className="flex shrink-0 items-center justify-between border-b bg-background px-4 py-2">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => window.close()}>
-            <ArrowLeft className="h-4 w-4 mr-1" />
+            <ArrowLeft className="mr-1 h-4 w-4" />
             关闭
           </Button>
-          <span className="text-sm font-medium truncate max-w-[300px]" title={fileName}>
+          <span
+            className="max-w-[300px] truncate font-medium text-sm"
+            title={fileName}
+          >
             {fileName}
           </span>
         </div>
@@ -89,13 +99,13 @@ function PreviewContent() {
           <Button variant="outline" size="sm" onClick={handleZoomOut}>
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-sm w-12 text-center">{scale}%</span>
+          <span className="w-12 text-center text-sm">{scale}%</span>
           <Button variant="outline" size="sm" onClick={handleZoomIn}>
             <ZoomIn className="h-4 w-4" />
           </Button>
           <Button variant="outline" size="sm" asChild>
             <a href={downloadUrl} download={fileName}>
-              <Download className="h-4 w-4 mr-1" />
+              <Download className="mr-1 h-4 w-4" />
               下载
             </a>
           </Button>
@@ -103,9 +113,9 @@ function PreviewContent() {
       </div>
 
       <div className="flex-1 overflow-auto p-4">
-        <div className="flex justify-center relative">
+        <div className="relative flex justify-center">
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-muted/50">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
@@ -113,7 +123,7 @@ function PreviewContent() {
             <iframe
               key={iframeSrc}
               src={iframeSrc}
-              className="bg-white rounded-lg shadow-lg"
+              className="rounded-lg bg-white shadow-lg"
               style={{
                 width: `${scale}%`,
                 height: "calc(100vh - 120px)",
@@ -135,11 +145,13 @@ function PreviewContent() {
 
 export default function PreviewPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">加载中...</p>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-muted-foreground">加载中...</p>
+        </div>
+      }
+    >
       <PreviewContent />
     </Suspense>
   );

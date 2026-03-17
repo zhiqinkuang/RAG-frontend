@@ -37,9 +37,9 @@ export default function RootLayout({
         <ThemeProvider>
           <TooltipProvider>
             <I18nProvider>
-            <AuthGuard>{children}</AuthGuard>
-            <Toaster position="top-center" richColors />
-          </I18nProvider>
+              <AuthGuard>{children}</AuthGuard>
+              <Toaster position="top-center" richColors />
+            </I18nProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

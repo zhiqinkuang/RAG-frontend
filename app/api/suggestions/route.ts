@@ -21,8 +21,20 @@ function parseSuggestions(text: string): string[] {
   // Fallback: extract numbered lines like "1. xxx" or "- xxx"
   const lines = text
     .split("\n")
-    .map((l) => l.replace(/^\s*[\d]+[.)]\s*/, "").replace(/^\s*[-*•]\s*/, "").replace(/^["'`]+|["'`]+$/g, "").trim())
-    .filter((l) => l.length > 2 && l.length < 100 && !l.startsWith("{") && !l.startsWith("["));
+    .map((l) =>
+      l
+        .replace(/^\s*[\d]+[.)]\s*/, "")
+        .replace(/^\s*[-*•]\s*/, "")
+        .replace(/^["'`]+|["'`]+$/g, "")
+        .trim(),
+    )
+    .filter(
+      (l) =>
+        l.length > 2 &&
+        l.length < 100 &&
+        !l.startsWith("{") &&
+        !l.startsWith("["),
+    );
 
   return lines.slice(0, 3);
 }
@@ -72,11 +84,11 @@ export async function POST(req: Request) {
     // RAG provider 使用后端的 /v1/chat/completions 接口
     let url: string;
     if (provider === "rag") {
-      url = effectiveBaseURL.replace(/\/$/, "") + "/v1/chat/completions";
+      url = `${effectiveBaseURL.replace(/\/$/, "")}/v1/chat/completions`;
     } else if (provider === "custom-api") {
       url = effectiveBaseURL;
     } else {
-      url = effectiveBaseURL.replace(/\/$/, "") + "/chat/completions";
+      url = `${effectiveBaseURL.replace(/\/$/, "")}/chat/completions`;
     }
 
     const body: Record<string, unknown> = {
@@ -92,7 +104,11 @@ export async function POST(req: Request) {
     };
 
     // RAG provider 添加 knowledge_base_id
-    if (provider === "rag" && typeof knowledgeBaseId === "number" && knowledgeBaseId > 0) {
+    if (
+      provider === "rag" &&
+      typeof knowledgeBaseId === "number" &&
+      knowledgeBaseId > 0
+    ) {
       body.knowledge_base_id = knowledgeBaseId;
     }
 
@@ -116,9 +132,7 @@ export async function POST(req: Request) {
 
     const data = await response.json();
     const text =
-      data.choices?.[0]?.message?.content ??
-      data.choices?.[0]?.text ??
-      "";
+      data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? "";
 
     if (process.env.NODE_ENV === "development") {
       console.log("[suggestions] raw response:", text.slice(0, 300));
