@@ -49,6 +49,20 @@ function logRequest(action: string, info: { username?: string; email?: string; i
   console.log(`[${timestamp}] ${action}: username=${maskedUsername}, email=${maskedEmail}, ip=${maskedIP}, success=${info.success}`);
 }
 
+/** 获取 RAG 后端 URL（优先服务端环境变量） */
+function getRagBackendUrl(clientBaseURL?: string): string {
+  // 优先使用服务端环境变量（生产部署）
+  if (process.env.RAG_API_URL) {
+    return process.env.RAG_API_URL.replace(/\/$/, "");
+  }
+  // 其次使用客户端传入的 baseURL（本地开发）
+  if (clientBaseURL) {
+    return clientBaseURL.replace(/\/$/, "");
+  }
+  // 默认本地开发地址
+  return "http://127.0.0.1:8080";
+}
+
 /** 代理到 RAG 后端 POST /api/v1/auth/register */
 export async function POST(req: NextRequest) {
   // 获取客户端 IP
@@ -69,7 +83,7 @@ export async function POST(req: NextRequest) {
       return errorResponse("请求数据格式错误", 400);
     }
 
-    const { baseURL, username, email, password } = body as {
+    const { baseURL: clientBaseURL, username, email, password } = body as {
       baseURL?: string;
       username?: string;
       email?: string;
@@ -77,20 +91,16 @@ export async function POST(req: NextRequest) {
     };
 
     // 验证必填字段
-    if (!baseURL || !username || !email || !password) {
+    if (!username || !email || !password) {
       return errorResponse("请填写完整的注册信息", 400);
     }
 
+    // 获取后端 URL（优先服务端环境变量）
+    const base = getRagBackendUrl(clientBaseURL);
+
     // 消毒输入
-    const sanitizedBaseURL = sanitizeInput(baseURL);
     const sanitizedUsername = sanitizeInput(username);
     const sanitizedEmail = sanitizeInput(email);
-
-    // 验证 Base URL
-    const baseURLResult = validateURL(sanitizedBaseURL, { allowLocalhost: true });
-    if (!baseURLResult.valid) {
-      return errorResponse("服务器地址格式错误", 400);
-    }
 
     // 验证用户名
     const usernameResult = validateUsername(sanitizedUsername);
@@ -109,8 +119,6 @@ export async function POST(req: NextRequest) {
     if (!passwordResult.valid) {
       return errorResponse(passwordResult.errors[0] || "密码不符合要求", 400);
     }
-
-    const base = sanitizedBaseURL.replace(/\/$/, "");
 
     // 调用后端 API
     let res: Response;
