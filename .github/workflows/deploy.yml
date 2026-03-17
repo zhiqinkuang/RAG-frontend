@@ -1,0 +1,56 @@
+name: Deploy to Aliyun
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+  workflow_dispatch:
+
+env:
+  SERVER_IP: 139.196.236.244
+  DEPLOY_PATH: /opt/rag
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_RAG_API_URL: http://139.196.236.244:8080
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+          script: |
+            cd ${{ env.DEPLOY_PATH }}/frontend
+            git pull origin ${{ github.ref_name }}
+            docker compose build frontend
+            docker compose up -d frontend
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f http://${{ env.SERVER_IP }}:3000 || exit 1
