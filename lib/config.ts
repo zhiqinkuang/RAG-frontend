@@ -1,6 +1,6 @@
 /**
  * 统一配置管理
- * 
+ *
  * RAG 后端地址优先级：
  * 1. NEXT_PUBLIC_RAG_API_URL 环境变量（用于生产部署）
  * 2. 默认本地开发地址 http://127.0.0.1:8080
@@ -15,7 +15,7 @@ export function getRagBackendUrl(): string {
   if (process.env.NEXT_PUBLIC_RAG_API_URL) {
     return process.env.NEXT_PUBLIC_RAG_API_URL;
   }
-  
+
   // 默认本地开发地址
   return "http://127.0.0.1:8080";
 }

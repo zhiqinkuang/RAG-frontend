@@ -52,7 +52,8 @@ export function DocumentSidebar({
       }
     };
     fetchDocs();
-  }, [knowledgeBaseId, refreshKey]); // 添加 refreshKey 依赖
+    // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey 用于触发刷新，但不需要加入依赖
+  }, [knowledgeBaseId, refreshKey]);
 
   const toggleDoc = (docId: number) => {
     if (selectedDocIds.includes(docId)) {
@@ -82,9 +83,9 @@ export function DocumentSidebar({
     <>
       {/* 右侧边栏：仅展开时渲染，隐藏时不占位、无右白边 */}
       {isOpen && knowledgeBaseId && (
-        <div className="w-72 sm:w-80 shrink-0 border-l flex flex-col bg-muted/30 overflow-hidden animate-in slide-in-from-right-2 duration-300">
-          <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
-            <span className="text-sm font-medium">文档筛选</span>
+        <div className="slide-in-from-right-2 flex w-72 shrink-0 animate-in flex-col overflow-hidden border-l bg-muted/30 duration-300 sm:w-80">
+          <div className="flex shrink-0 items-center justify-between border-b px-3 py-2">
+            <span className="font-medium text-sm">文档筛选</span>
             <Button
               variant="ghost"
               size="icon"
@@ -94,11 +95,11 @@ export function DocumentSidebar({
               <X className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex gap-1 px-2 py-1.5 border-b shrink-0">
+          <div className="flex shrink-0 gap-1 border-b px-2 py-1.5">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 h-7 text-xs"
+              className="h-7 flex-1 text-xs"
               onClick={selectAll}
             >
               全选
@@ -106,24 +107,28 @@ export function DocumentSidebar({
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 h-7 text-xs"
+              className="h-7 flex-1 text-xs"
               onClick={clearAll}
             >
               清空
             </Button>
           </div>
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea className="min-h-0 flex-1">
             {loading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">加载中...</div>
+              <div className="py-6 text-center text-muted-foreground text-sm">
+                加载中...
+              </div>
             ) : documents.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">暂无文档</div>
+              <div className="py-6 text-center text-muted-foreground text-sm">
+                暂无文档
+              </div>
             ) : (
-              <div className="p-1.5 space-y-0.5">
+              <div className="space-y-0.5 p-1.5">
                 {documents.map((doc) => (
                   <ContextMenu key={doc.ID}>
                     <ContextMenuTrigger asChild>
                       <div
-                        className="flex items-center gap-2 px-2 py-2 rounded hover:bg-accent cursor-pointer"
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 hover:bg-accent"
                         onClick={() => toggleDoc(doc.ID)}
                       >
                         <Checkbox
@@ -132,16 +137,24 @@ export function DocumentSidebar({
                           className="h-4 w-4 shrink-0"
                         />
                         <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span className="text-sm min-w-0 flex-1 break-all line-clamp-2" title={doc.file_name}>{doc.file_name}</span>
+                        <span
+                          className="line-clamp-2 min-w-0 flex-1 break-all text-sm"
+                          title={doc.file_name}
+                        >
+                          {doc.file_name}
+                        </span>
                       </div>
                     </ContextMenuTrigger>
                     <ContextMenuContent>
                       <ContextMenuItem
                         onClick={() => {
-                          window.open(`/preview?docId=${doc.ID}&name=${encodeURIComponent(doc.file_name)}`, '_blank');
+                          window.open(
+                            `/preview?docId=${doc.ID}&name=${encodeURIComponent(doc.file_name)}`,
+                            "_blank",
+                          );
                         }}
                       >
-                        <Eye className="h-4 w-4 mr-2" />
+                        <Eye className="mr-2 h-4 w-4" />
                         预览文档
                       </ContextMenuItem>
                     </ContextMenuContent>
@@ -150,9 +163,11 @@ export function DocumentSidebar({
               </div>
             )}
           </ScrollArea>
-          <div className="px-3 py-2 border-t text-xs text-muted-foreground text-center bg-muted/50 shrink-0">
+          <div className="shrink-0 border-t bg-muted/50 px-3 py-2 text-center text-muted-foreground text-xs">
             {selectedDocIds.length > 0 ? (
-              <span className="text-primary font-medium">已选 {selectedDocIds.length} / {documents.length} 个</span>
+              <span className="font-medium text-primary">
+                已选 {selectedDocIds.length} / {documents.length} 个
+              </span>
             ) : (
               <span>共 {documents.length} 个文档</span>
             )}
@@ -168,9 +183,15 @@ export function DocumentSidebar({
           <Button
             variant="secondary"
             size="icon"
-            className="fixed right-5 bottom-24 h-11 w-11 rounded-full bg-white dark:bg-card text-foreground border shadow-md z-[9999] hover:scale-105 hover:bg-white hover:text-foreground dark:hover:bg-card transition-transform duration-200"
+            className="fixed right-5 bottom-24 z-[9999] h-11 w-11 rounded-full border bg-white text-foreground shadow-md transition-transform duration-200 hover:scale-105 hover:bg-white hover:text-foreground dark:bg-card dark:hover:bg-card"
             onClick={handleToggleSidebar}
-            title={knowledgeBaseId ? (isOpen ? "隐藏文档筛选" : "显示文档筛选") : "请先在设置中选择知识库"}
+            title={
+              knowledgeBaseId
+                ? isOpen
+                  ? "隐藏文档筛选"
+                  : "显示文档筛选"
+                : "请先在设置中选择知识库"
+            }
           >
             {isOpen ? (
               <X className="h-5 w-5" />
@@ -178,14 +199,14 @@ export function DocumentSidebar({
               <div className="relative">
                 <Filter className="h-5 w-5" />
                 {knowledgeBaseId && selectedDocIds.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-medium flex items-center justify-center px-1">
+                  <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 font-medium text-[10px] text-primary-foreground">
                     {selectedDocIds.length}
                   </span>
                 )}
               </div>
             )}
           </Button>,
-          document.body
+          document.body,
         )}
     </>
   );

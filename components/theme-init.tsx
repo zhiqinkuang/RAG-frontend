@@ -14,7 +14,7 @@ export function ThemeInit() {
         stored === "dark" ||
         (stored !== "light" &&
           window.matchMedia("(prefers-color-scheme: dark)").matches);
-      
+
       document.documentElement.classList.toggle("dark", isDark);
     } catch {
       // 忽略 localStorage 访问错误（如隐私模式）

@@ -17,7 +17,10 @@ export type StoredThread = {
 };
 
 // 回调函数类型
-type OnThreadDeletedCallback = (deletedId: string, remainingThreads: StoredThread[]) => void;
+type OnThreadDeletedCallback = (
+  deletedId: string,
+  remainingThreads: StoredThread[],
+) => void;
 let onThreadDeletedCallback: OnThreadDeletedCallback | null = null;
 
 export function setOnThreadDeletedCallback(cb: OnThreadDeletedCallback | null) {
@@ -55,11 +58,11 @@ function updateThread(remoteId: string, patch: Partial<StoredThread>) {
 export class LocalStorageThreadListAdapter {
   // 用于通知 UI 更新的回调
   private _onUpdate: (() => void) | null = null;
-  
+
   setOnUpdate(callback: (() => void) | null) {
     this._onUpdate = callback;
   }
-  
+
   private notifyUpdate() {
     if (this._onUpdate) {
       this._onUpdate();
@@ -143,7 +146,7 @@ export class LocalStorageThreadListAdapter {
     writeThreads(remainingThreads);
     // Also clean up persisted messages for this thread
     try {
-      localStorage.removeItem("chat-messages:" + remoteId);
+      localStorage.removeItem(`chat-messages:${remoteId}`);
     } catch {
       // ignore
     }
@@ -189,8 +192,16 @@ export class LocalStorageThreadListAdapter {
     };
     return new ReadableStream<Chunk>({
       start(controller) {
-        controller.enqueue({ path: [], type: "step-start", messageId: "title" });
-        controller.enqueue({ path: [0], type: "part-start", part: { type: "text" } });
+        controller.enqueue({
+          path: [],
+          type: "step-start",
+          messageId: "title",
+        });
+        controller.enqueue({
+          path: [0],
+          type: "part-start",
+          part: { type: "text" },
+        });
         controller.enqueue({ path: [0], type: "text-delta", textDelta: title });
         controller.enqueue({ path: [0], type: "part-finish" });
         controller.enqueue({
@@ -202,7 +213,7 @@ export class LocalStorageThreadListAdapter {
         });
         controller.close();
       },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any;
   }
 

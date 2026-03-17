@@ -46,7 +46,9 @@ export function deleteMessages(threadId: string) {
   localStorage.removeItem(MSG_PREFIX + threadId);
 }
 
-export function createThreadHistoryAdapter(threadId: string): ThreadHistoryAdapter {
+export function createThreadHistoryAdapter(
+  threadId: string,
+): ThreadHistoryAdapter {
   return {
     async load() {
       return { messages: [] };

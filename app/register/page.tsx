@@ -19,10 +19,17 @@ import {
 const STORAGE_KEY = "chat-settings";
 
 /** 默认 RAG 后端地址（优先使用环境变量） */
-const DEFAULT_RAG_BASE_URL = process.env.NEXT_PUBLIC_RAG_API_URL || "http://127.0.0.1:8080";
+const DEFAULT_RAG_BASE_URL =
+  process.env.NEXT_PUBLIC_RAG_API_URL || "http://127.0.0.1:8080";
 
 /** 密码强度指示器组件 */
-function PasswordStrengthIndicator({ strength, t }: { strength: PasswordStrength; t: Record<string, string> }) {
+function PasswordStrengthIndicator({
+  strength,
+  t,
+}: {
+  strength: PasswordStrength;
+  t: Record<string, string>;
+}) {
   if (strength.score === 0 && !strength.valid) return null;
 
   const getStrengthLabel = (score: number): string => {
@@ -42,18 +49,18 @@ function PasswordStrengthIndicator({ strength, t }: { strength: PasswordStrength
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
-        <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-200">
           <div
             className={`h-full transition-all duration-300 ${getStrengthColor(strength.score)}`}
             style={{ width: `${(strength.score / 4) * 100}%` }}
           />
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-muted-foreground text-xs">
           {getStrengthLabel(strength.score)}
         </span>
       </div>
       {strength.errors.length > 0 && (
-        <ul className="text-xs text-destructive space-y-0.5">
+        <ul className="space-y-0.5 text-destructive text-xs">
           {strength.errors.map((error, i) => (
             <li key={i}>• {error}</li>
           ))}
@@ -84,24 +91,30 @@ export default function RegisterPage() {
   });
 
   // 实时验证用户名
-  const validateUsernameField = useCallback((value: string) => {
-    if (value.trim() === "") {
-      setUsernameError(null);
-      return;
-    }
-    const result = validateUsername(value);
-    setUsernameError(result.valid ? null : t.invalidUsername);
-  }, [t.invalidUsername]);
+  const validateUsernameField = useCallback(
+    (value: string) => {
+      if (value.trim() === "") {
+        setUsernameError(null);
+        return;
+      }
+      const result = validateUsername(value);
+      setUsernameError(result.valid ? null : t.invalidUsername);
+    },
+    [t.invalidUsername],
+  );
 
   // 实时验证邮箱
-  const validateEmailField = useCallback((value: string) => {
-    if (value.trim() === "") {
-      setEmailError(null);
-      return;
-    }
-    const result = validateEmail(value);
-    setEmailError(result.valid ? null : t.invalidEmail);
-  }, [t.invalidEmail]);
+  const validateEmailField = useCallback(
+    (value: string) => {
+      if (value.trim() === "") {
+        setEmailError(null);
+        return;
+      }
+      const result = validateEmail(value);
+      setEmailError(result.valid ? null : t.invalidEmail);
+    },
+    [t.invalidEmail],
+  );
 
   // 实时验证密码强度
   const validatePasswordField = useCallback((value: string) => {
@@ -136,8 +149,17 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await ragRegister(DEFAULT_RAG_BASE_URL, username.trim(), email.trim().toLowerCase(), password);
-      const res = await ragLogin(DEFAULT_RAG_BASE_URL, email.trim().toLowerCase(), password);
+      await ragRegister(
+        DEFAULT_RAG_BASE_URL,
+        username.trim(),
+        email.trim().toLowerCase(),
+        password,
+      );
+      const res = await ragLogin(
+        DEFAULT_RAG_BASE_URL,
+        email.trim().toLowerCase(),
+        password,
+      );
       setStoredRagAuth(res.token, res.user);
       const settings = {
         provider: "rag",
@@ -149,7 +171,13 @@ export default function RegisterPage() {
       router.push("/");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : (lang === "zh" ? "注册失败" : "Register failed"));
+      setError(
+        err instanceof Error
+          ? err.message
+          : lang === "zh"
+            ? "注册失败"
+            : "Register failed",
+      );
     } finally {
       setLoading(false);
     }
@@ -159,12 +187,19 @@ export default function RegisterPage() {
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-sm space-y-4 sm:space-y-6">
         <div className="text-center">
-          <h1 className="text-xl sm:text-2xl font-semibold">{t.registerTitle}</h1>
-          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">{t.ragAccount}</p>
+          <h1 className="font-semibold text-xl sm:text-2xl">
+            {t.registerTitle}
+          </h1>
+          <p className="mt-1 text-muted-foreground text-xs sm:text-sm">
+            {t.ragAccount}
+          </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
-            <label htmlFor="username" className="text-xs sm:text-sm font-medium">
+            <label
+              htmlFor="username"
+              className="font-medium text-xs sm:text-sm"
+            >
               {t.username}
             </label>
             <Input
@@ -177,7 +212,7 @@ export default function RegisterPage() {
                 validateUsernameField(e.target.value);
               }}
               onBlur={() => validateUsernameField(username)}
-              className={`h-9 sm:h-10 text-sm ${usernameError ? "border-destructive" : ""}`}
+              className={`h-9 text-sm sm:h-10 ${usernameError ? "border-destructive" : ""}`}
               aria-invalid={!!usernameError}
               aria-describedby={usernameError ? "username-error" : undefined}
               required
@@ -188,12 +223,14 @@ export default function RegisterPage() {
               </p>
             ) : (
               <p className="text-muted-foreground text-xs">
-                {lang === "zh" ? "3-20 位字母、数字或下划线" : "3-20 characters, letters, numbers, and underscores only"}
+                {lang === "zh"
+                  ? "3-20 位字母、数字或下划线"
+                  : "3-20 characters, letters, numbers, and underscores only"}
               </p>
             )}
           </div>
           <div className="space-y-2">
-            <label htmlFor="email" className="text-xs sm:text-sm font-medium">
+            <label htmlFor="email" className="font-medium text-xs sm:text-sm">
               {t.email}
             </label>
             <Input
@@ -206,7 +243,7 @@ export default function RegisterPage() {
                 validateEmailField(e.target.value);
               }}
               onBlur={() => validateEmailField(email)}
-              className={`h-9 sm:h-10 text-sm ${emailError ? "border-destructive" : ""}`}
+              className={`h-9 text-sm sm:h-10 ${emailError ? "border-destructive" : ""}`}
               aria-invalid={!!emailError}
               aria-describedby={emailError ? "email-error" : undefined}
               required
@@ -218,7 +255,10 @@ export default function RegisterPage() {
             )}
           </div>
           <div className="space-y-2">
-            <label htmlFor="password" className="text-xs sm:text-sm font-medium">
+            <label
+              htmlFor="password"
+              className="font-medium text-xs sm:text-sm"
+            >
               {t.password}
             </label>
             <div className="relative">
@@ -231,19 +271,28 @@ export default function RegisterPage() {
                   setPassword(e.target.value);
                   validatePasswordField(e.target.value);
                 }}
-                className={`h-9 sm:h-10 text-sm pr-10 ${passwordStrength.errors.length > 0 && password ? "border-destructive" : ""}`}
+                className={`h-9 pr-10 text-sm sm:h-10 ${passwordStrength.errors.length > 0 && password ? "border-destructive" : ""}`}
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label={showPassword ? "隐藏密码" : "显示密码"}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </button>
             </div>
-            {password && <PasswordStrengthIndicator strength={passwordStrength} t={{ lang }} />}
+            {password && (
+              <PasswordStrengthIndicator
+                strength={passwordStrength}
+                t={{ lang }}
+              />
+            )}
           </div>
           {error && (
             <p className="text-destructive text-xs sm:text-sm" role="alert">
@@ -252,7 +301,7 @@ export default function RegisterPage() {
           )}
           <Button
             type="submit"
-            className="w-full h-9 sm:h-10"
+            className="h-9 w-full sm:h-10"
             disabled={loading || !passwordStrength.valid}
             aria-disabled={loading || !passwordStrength.valid}
           >
@@ -261,7 +310,10 @@ export default function RegisterPage() {
         </form>
         <p className="text-center text-muted-foreground text-xs sm:text-sm">
           {lang === "zh" ? "已有账号？" : "Already have an account?"}{" "}
-          <Link href="/login" className="text-primary underline underline-offset-2">
+          <Link
+            href="/login"
+            className="text-primary underline underline-offset-2"
+          >
             {t.login}
           </Link>
         </p>

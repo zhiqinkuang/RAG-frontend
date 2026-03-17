@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
   output: "standalone",
-  
+
   devIndicators: false,
   async headers() {
     const defaultSecurityHeaders = [

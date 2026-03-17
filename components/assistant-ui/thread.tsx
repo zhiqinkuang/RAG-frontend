@@ -176,7 +176,15 @@ const FollowUpSuggestions: FC = () => {
 
       // Read messages imperatively from the runtime
       const threadState = aui.thread().getState();
-      const allMsgs = (threadState as unknown as { messages?: { role: string; parts?: { type?: string; text?: string }[] }[] }).messages ?? [];
+      const allMsgs =
+        (
+          threadState as unknown as {
+            messages?: {
+              role: string;
+              parts?: { type?: string; text?: string }[];
+            }[];
+          }
+        ).messages ?? [];
 
       if (allMsgs.length === 0) return;
 
@@ -239,7 +247,7 @@ const FollowUpSuggestions: FC = () => {
 
   return (
     <div className="mx-auto w-full max-w-(--thread-max-width) px-2 pb-2">
-      <div className="flex items-center gap-1.5 mb-2 text-xs text-muted-foreground">
+      <div className="mb-2 flex items-center gap-1.5 text-muted-foreground text-xs">
         <SparklesIcon className="size-3" />
         <span>{t.suggestionsTitle}</span>
       </div>
@@ -256,7 +264,7 @@ const FollowUpSuggestions: FC = () => {
                 key={s}
                 type="button"
                 onClick={() => handleClick(s)}
-                className="rounded-full border border-border bg-background px-3.5 py-1.5 text-sm text-foreground transition-colors hover:bg-muted hover:border-foreground/20 active:scale-[0.97]"
+                className="rounded-full border border-border bg-background px-3.5 py-1.5 text-foreground text-sm transition-colors hover:border-foreground/20 hover:bg-muted active:scale-[0.97]"
               >
                 {s}
               </button>
@@ -276,7 +284,7 @@ const ComposerQueue: FC = () => {
       <div className="flex items-center gap-1.5 px-1 text-muted-foreground text-xs">
         <ClockIcon className="size-3" />
         <span>{t.queueTitle}</span>
-        <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none">
+        <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 font-medium text-[10px] leading-none">
           {items.length}
         </span>
       </div>
@@ -285,12 +293,15 @@ const ComposerQueue: FC = () => {
           key={item.id}
           className="group flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm"
         >
-          <span className="shrink-0 text-xs font-medium tabular-nums text-muted-foreground/60">
+          <span className="shrink-0 font-medium text-muted-foreground/60 text-xs tabular-nums">
             {i + 1}
           </span>
           <span className="flex-1 truncate text-foreground/80">
             {item.attachments && item.attachments.length > 0 && (
-              <span className="mr-1 text-muted-foreground/60" title={item.attachments.map((a) => a.name).join(", ")}>
+              <span
+                className="mr-1 text-muted-foreground/60"
+                title={item.attachments.map((a) => a.name).join(", ")}
+              >
                 📎{item.attachments.length}
               </span>
             )}
@@ -300,7 +311,7 @@ const ComposerQueue: FC = () => {
             type="button"
             onClick={() => removeItem(item.id)}
             aria-label={t.queueRemove}
-            className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="shrink-0 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
           >
             <XIcon className="size-3" />
           </button>
@@ -318,7 +329,9 @@ const ComposerQueue: FC = () => {
 const useQueueCapture = () => {
   const { addItem } = useQueue();
   const aui = useAui();
-  const canCapture = useAuiState((s) => s.thread.isRunning && s.composer.isEditing && !s.composer.isEmpty);
+  const canCapture = useAuiState(
+    (s) => s.thread.isRunning && s.composer.isEditing && !s.composer.isEmpty,
+  );
   if (!canCapture) return null;
 
   return async () => {
@@ -333,8 +346,10 @@ const useQueueCapture = () => {
         // PendingAttachment has a file property
         const pending = a as Attachment & { file: File };
         if (!pending.file) return a;
-        return customAttachmentAdapter.send(pending as Parameters<typeof customAttachmentAdapter.send>[0]);
-      })
+        return customAttachmentAdapter.send(
+          pending as Parameters<typeof customAttachmentAdapter.send>[0],
+        );
+      }),
     );
 
     addItem(text, completeAttachments as Attachment[]);
@@ -350,12 +365,15 @@ const Composer: FC = () => {
   const { addItem } = useQueue();
 
   // When running, intercept Enter to enqueue instead of attempting SDK send
-  const handleKeyDownWhileRunning = async (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDownWhileRunning = async (
+    e: KeyboardEvent<HTMLTextAreaElement>,
+  ) => {
     if (
       isRunning &&
       e.key === "Enter" &&
       !e.shiftKey &&
-      !(e.nativeEvent as unknown as InputEvent & { isComposing?: boolean }).isComposing
+      !(e.nativeEvent as unknown as InputEvent & { isComposing?: boolean })
+        .isComposing
     ) {
       e.preventDefault();
       const state = aui.composer().getState();
@@ -368,8 +386,10 @@ const Composer: FC = () => {
           if (a.status.type === "complete") return a;
           const pending = a as Attachment & { file: File };
           if (!pending.file) return a;
-          return customAttachmentAdapter.send(pending as Parameters<typeof customAttachmentAdapter.send>[0]);
-        })
+          return customAttachmentAdapter.send(
+            pending as Parameters<typeof customAttachmentAdapter.send>[0],
+          );
+        }),
       );
 
       addItem(text, completeAttachments as Attachment[]);
@@ -466,7 +486,9 @@ const MessageError: FC = () => {
 
 const AssistantMessage: FC = () => {
   const isRunning = useAssistantState(
-    (s) => (s as { message?: { status?: { type?: string } } }).message?.status?.type === "running"
+    (s) =>
+      (s as { message?: { status?: { type?: string } } }).message?.status
+        ?.type === "running",
   );
   const { t } = useI18n();
   return (
@@ -476,7 +498,10 @@ const AssistantMessage: FC = () => {
     >
       <div className="aui-assistant-message-content wrap-break-word px-2 text-foreground leading-relaxed">
         {isRunning && (
-          <p className="aui-assistant-thinking text-muted-foreground text-sm italic mb-2" aria-live="polite">
+          <p
+            className="aui-assistant-thinking mb-2 text-muted-foreground text-sm italic"
+            aria-live="polite"
+          >
             {t.thinking}
           </p>
         )}

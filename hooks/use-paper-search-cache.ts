@@ -3,7 +3,7 @@
  * 使用内存缓存避免重复请求相同关键词
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import type { Paper, SearchResult } from "@/lib/paper-search";
 
 type CacheEntry = {
@@ -31,15 +31,15 @@ export function usePaperSearchCache() {
   const getCachedResult = useCallback((query: string): SearchResult | null => {
     const normalizedQuery = query.trim().toLowerCase();
     const entry = globalCache[normalizedQuery];
-    
+
     if (!entry) return null;
-    
+
     // 检查是否过期
     if (Date.now() - entry.timestamp > CACHE_TTL) {
       delete globalCache[normalizedQuery];
       return null;
     }
-    
+
     return {
       papers: entry.papers,
       total: entry.total,
@@ -67,7 +67,7 @@ export function usePaperSearchCache() {
       delete globalCache[normalizedQuery];
     } else {
       // 清除所有缓存
-      Object.keys(globalCache).forEach(key => delete globalCache[key]);
+      Object.keys(globalCache).forEach((key) => delete globalCache[key]);
     }
   }, []);
 
@@ -75,12 +75,12 @@ export function usePaperSearchCache() {
   const getCacheInfo = useCallback((query: string) => {
     const normalizedQuery = query.trim().toLowerCase();
     const entry = globalCache[normalizedQuery];
-    
+
     if (!entry) return null;
-    
+
     const age = Date.now() - entry.timestamp;
     const remainingTTL = Math.max(0, CACHE_TTL - age);
-    
+
     return {
       exists: true,
       age: Math.floor(age / 1000),
@@ -101,5 +101,5 @@ export function usePaperSearchCache() {
 
 // 导出全局缓存清除函数（用于强制刷新）
 export function clearAllPaperSearchCache() {
-  Object.keys(globalCache).forEach(key => delete globalCache[key]);
+  Object.keys(globalCache).forEach((key) => delete globalCache[key]);
 }

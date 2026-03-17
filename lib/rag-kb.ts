@@ -99,7 +99,7 @@ function getAuthHeaders(): Record<string, string> {
 export async function listKnowledgeBases(
   page = 1,
   pageSize = 20,
-  keyword = ""
+  keyword = "",
 ): Promise<KbListResponse> {
   const url = new URL(`${RAG_BACKEND_URL}/api/v1/knowledge-bases`);
   url.searchParams.set("page", String(page));
@@ -117,7 +117,9 @@ export async function listKnowledgeBases(
     return res.json();
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {
-      throw new Error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+      throw new Error(
+        "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+      );
     }
     throw e;
   }
@@ -127,7 +129,7 @@ export async function listKnowledgeBases(
 export async function createKnowledgeBase(
   name: string,
   description = "",
-  visibility = 0
+  visibility = 0,
 ): Promise<KbCreateResponse> {
   try {
     const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases`, {
@@ -141,7 +143,9 @@ export async function createKnowledgeBase(
     return res.json();
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {
-      throw new Error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+      throw new Error(
+        "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+      );
     }
     throw e;
   }
@@ -150,7 +154,7 @@ export async function createKnowledgeBase(
 // 更新知识库
 export async function updateKnowledgeBase(
   id: number,
-  data: { name?: string; description?: string; visibility?: number }
+  data: { name?: string; description?: string; visibility?: number },
 ): Promise<{ code: number; message: string; data: KnowledgeBase }> {
   const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${id}`, {
     method: "PUT",
@@ -162,7 +166,7 @@ export async function updateKnowledgeBase(
 
 // 删除知识库
 export async function deleteKnowledgeBase(
-  id: number
+  id: number,
 ): Promise<{ code: number; message: string }> {
   const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${id}`, {
     method: "DELETE",
@@ -175,9 +179,11 @@ export async function deleteKnowledgeBase(
 export async function listDocuments(
   kbId: number,
   page = 1,
-  pageSize = 20
+  pageSize = 20,
 ): Promise<DocListResponse> {
-  const url = new URL(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents`);
+  const url = new URL(
+    `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents`,
+  );
   url.searchParams.set("page", String(page));
   url.searchParams.set("page_size", String(pageSize));
 
@@ -191,7 +197,7 @@ export async function listDocuments(
 // 上传文档
 export async function uploadDocuments(
   kbId: number,
-  files: File[]
+  files: File[],
 ): Promise<UploadResponse> {
   const token = getStoredRagToken();
   const formData = new FormData();
@@ -199,25 +205,28 @@ export async function uploadDocuments(
     formData.append("files", file);
   });
 
-  const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
+  const res = await fetch(
+    `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents`,
+    {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    },
+  );
   return res.json();
 }
 
 // 删除文档
 export async function deleteDocument(
   kbId: number,
-  docId: number
+  docId: number,
 ): Promise<{ code: number; message: string }> {
   const res = await fetch(
     `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents/${docId}`,
     {
       method: "DELETE",
       headers: getAuthHeaders(),
-    }
+    },
   );
   return res.json();
 }
@@ -225,14 +234,14 @@ export async function deleteDocument(
 // 重新处理文档
 export async function reprocessDocument(
   kbId: number,
-  docId: number
+  docId: number,
 ): Promise<{ code: number; message: string }> {
   const res = await fetch(
     `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents/${docId}/reprocess`,
     {
       method: "POST",
       headers: getAuthHeaders(),
-    }
+    },
   );
   return res.json();
 }
@@ -243,18 +252,21 @@ export function formatFileSize(bytes: number): string {
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
 }
 
 // 文档状态文本
 // 后端定义: 0=Pending, 1=Processing, 2=Completed, 3=Failed
 // 进度100%时直接显示"已完成"，不显示"处理中"或"等待后端确认"
-export function getDocStatusText(status: number, progressPercent?: number): string {
+export function getDocStatusText(
+  status: number,
+  progressPercent?: number,
+): string {
   // 进度100%直接显示"已完成"
   if (progressPercent && progressPercent >= 100) {
     return "已完成";
   }
-  
+
   switch (status) {
     case 0:
       return "待处理";
@@ -271,12 +283,15 @@ export function getDocStatusText(status: number, progressPercent?: number): stri
 
 // 文档状态颜色
 // 进度100%时直接显示绿色
-export function getDocStatusColor(status: number, progressPercent?: number): string {
+export function getDocStatusColor(
+  status: number,
+  progressPercent?: number,
+): string {
   // 进度100%直接显示绿色
   if (progressPercent && progressPercent >= 100) {
     return "text-green-600 dark:text-green-400";
   }
-  
+
   switch (status) {
     case 0:
       return "text-gray-600 dark:text-gray-400";

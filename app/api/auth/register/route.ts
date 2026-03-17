@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { validateEmail, validatePassword, validateUsername, sanitizeInput } from "@/lib/validation";
+import {
+  validateEmail,
+  validatePassword,
+  validateUsername,
+  sanitizeInput,
+} from "@/lib/validation";
 
 /** 请求体大小限制（字节）- 1MB */
 const MAX_BODY_SIZE = 1024 * 1024;
@@ -19,34 +24,43 @@ function getClientIP(req: NextRequest): string {
   if (forwardedFor) {
     return forwardedFor.split(",")[0].trim();
   }
-  
+
   // 备选：x-real-ip 头
   const realIP = req.headers.get("x-real-ip");
   if (realIP) {
     return realIP.trim();
   }
-  
+
   // Next.js 提供的 ip 属性（需要配置 trustHostHeader）
   const ip = (req as NextRequest & { ip?: string }).ip;
   if (ip) {
     return ip;
   }
-  
+
   return "unknown";
 }
 
 /** 安全日志（不含敏感信息） */
-function logRequest(action: string, info: { username?: string; email?: string; ip?: string; success: boolean }) {
+function logRequest(
+  action: string,
+  info: { username?: string; email?: string; ip?: string; success: boolean },
+) {
   const timestamp = new Date().toISOString();
-  const maskedEmail = info.email ? info.email.replace(/(.{2}).*(@.*)/, "$1***$2") : "unknown";
-  const maskedUsername = info.username ? info.username.substring(0, 2) + "***" : "unknown";
+  const maskedEmail = info.email
+    ? info.email.replace(/(.{2}).*(@.*)/, "$1***$2")
+    : "unknown";
+  const maskedUsername = info.username
+    ? `${info.username.substring(0, 2)}***`
+    : "unknown";
   // 支持 IPv4 和 IPv6 地址脱敏
   const maskedIP = info.ip
-    ? info.ip.includes(':')
-      ? info.ip.split(':').slice(0, 2).join(':') + ':...'
+    ? info.ip.includes(":")
+      ? `${info.ip.split(":").slice(0, 2).join(":")}:...`
       : info.ip.replace(/(\d+\.\d+)\.\d+\.\d+/, "$1.***.***")
     : "unknown";
-  console.log(`[${timestamp}] ${action}: username=${maskedUsername}, email=${maskedEmail}, ip=${maskedIP}, success=${info.success}`);
+  console.log(
+    `[${timestamp}] ${action}: username=${maskedUsername}, email=${maskedEmail}, ip=${maskedIP}, success=${info.success}`,
+  );
 }
 
 /** 获取 RAG 后端 URL（优先服务端环境变量） */
@@ -67,7 +81,7 @@ function getRagBackendUrl(clientBaseURL?: string): string {
 export async function POST(req: NextRequest) {
   // 获取客户端 IP
   const clientIP = getClientIP(req);
-  
+
   try {
     // 检查请求体大小
     const contentLength = req.headers.get("content-length");
@@ -83,7 +97,12 @@ export async function POST(req: NextRequest) {
       return errorResponse("请求数据格式错误", 400);
     }
 
-    const { baseURL: clientBaseURL, username, email, password } = body as {
+    const {
+      baseURL: clientBaseURL,
+      username,
+      email,
+      password,
+    } = body as {
       baseURL?: string;
       username?: string;
       email?: string;
@@ -126,17 +145,26 @@ export async function POST(req: NextRequest) {
       res = await fetch(`${base}/api/v1/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          username: sanitizedUsername, 
-          email: sanitizedEmail.toLowerCase(), 
-          password 
+        body: JSON.stringify({
+          username: sanitizedUsername,
+          email: sanitizedEmail.toLowerCase(),
+          password,
         }),
       });
     } catch (fetchError) {
-      logRequest("REGISTER", { username: sanitizedUsername, email: sanitizedEmail, ip: clientIP, success: false });
+      logRequest("REGISTER", {
+        username: sanitizedUsername,
+        email: sanitizedEmail,
+        ip: clientIP,
+        success: false,
+      });
       // 网络连接错误
-      const errMsg = fetchError instanceof Error ? fetchError.message.toLowerCase() : "";
-      if (errMsg.includes("econnrefused") || errMsg.includes("connection refused")) {
+      const errMsg =
+        fetchError instanceof Error ? fetchError.message.toLowerCase() : "";
+      if (
+        errMsg.includes("econnrefused") ||
+        errMsg.includes("connection refused")
+      ) {
         return errorResponse("无法连接到服务器，请检查服务是否启动", 503);
       }
       if (errMsg.includes("enotfound") || errMsg.includes("dns")) {
@@ -149,9 +177,14 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json().catch(() => ({}));
-    
+
     if (!res.ok) {
-      logRequest("REGISTER", { username: sanitizedUsername, email: sanitizedEmail, ip: clientIP, success: false });
+      logRequest("REGISTER", {
+        username: sanitizedUsername,
+        email: sanitizedEmail,
+        ip: clientIP,
+        success: false,
+      });
       // 根据状态码返回具体的中文错误
       if (res.status === 409) {
         return errorResponse("用户名或邮箱已被注册", 409);
@@ -167,15 +200,28 @@ export async function POST(req: NextRequest) {
 
     const code = (data as { code?: number }).code;
     if (code !== 0) {
-      logRequest("REGISTER", { username: sanitizedUsername, email: sanitizedEmail, ip: clientIP, success: false });
+      logRequest("REGISTER", {
+        username: sanitizedUsername,
+        email: sanitizedEmail,
+        ip: clientIP,
+        success: false,
+      });
       return errorResponse("注册失败，请稍后重试", 400);
     }
 
-    logRequest("REGISTER", { username: sanitizedUsername, email: sanitizedEmail, ip: clientIP, success: true });
+    logRequest("REGISTER", {
+      username: sanitizedUsername,
+      email: sanitizedEmail,
+      ip: clientIP,
+      success: true,
+    });
     return NextResponse.json((data as { data?: unknown }).data ?? {});
   } catch (e) {
     // 不暴露内部错误详情
-    console.error("Register error:", e instanceof Error ? e.message : "Unknown error");
+    console.error(
+      "Register error:",
+      e instanceof Error ? e.message : "Unknown error",
+    );
     return errorResponse("服务器错误，请稍后重试", 500);
   }
 }

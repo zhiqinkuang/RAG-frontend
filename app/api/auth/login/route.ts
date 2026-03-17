@@ -19,33 +19,40 @@ function getClientIP(req: NextRequest): string {
   if (forwardedFor) {
     return forwardedFor.split(",")[0].trim();
   }
-  
+
   // 备选：x-real-ip 头
   const realIP = req.headers.get("x-real-ip");
   if (realIP) {
     return realIP.trim();
   }
-  
+
   // Next.js 提供的 ip 属性（需要配置 trustHostHeader）
   const ip = (req as NextRequest & { ip?: string }).ip;
   if (ip) {
     return ip;
   }
-  
+
   return "unknown";
 }
 
 /** 安全日志（不含敏感信息） */
-function logRequest(action: string, info: { email?: string; ip?: string; success: boolean }) {
+function logRequest(
+  action: string,
+  info: { email?: string; ip?: string; success: boolean },
+) {
   const timestamp = new Date().toISOString();
-  const maskedEmail = info.email ? info.email.replace(/(.{2}).*(@.*)/, "$1***$2") : "unknown";
+  const maskedEmail = info.email
+    ? info.email.replace(/(.{2}).*(@.*)/, "$1***$2")
+    : "unknown";
   // 支持 IPv4 和 IPv6 地址脱敏
   const maskedIP = info.ip
-    ? info.ip.includes(':')
-      ? info.ip.split(':').slice(0, 2).join(':') + ':...'
+    ? info.ip.includes(":")
+      ? `${info.ip.split(":").slice(0, 2).join(":")}:...`
       : info.ip.replace(/(\d+\.\d+)\.\d+\.\d+/, "$1.***.***")
     : "unknown";
-  console.log(`[${timestamp}] ${action}: email=${maskedEmail}, ip=${maskedIP}, success=${info.success}`);
+  console.log(
+    `[${timestamp}] ${action}: email=${maskedEmail}, ip=${maskedIP}, success=${info.success}`,
+  );
 }
 
 /** 获取 RAG 后端 URL（优先服务端环境变量） */
@@ -66,7 +73,7 @@ function getRagBackendUrl(clientBaseURL?: string): string {
 export async function POST(req: NextRequest) {
   // 获取客户端 IP
   const clientIP = getClientIP(req);
-  
+
   try {
     // 检查请求体大小
     const contentLength = req.headers.get("content-length");
@@ -82,7 +89,11 @@ export async function POST(req: NextRequest) {
       return errorResponse("请求数据格式错误", 400);
     }
 
-    const { baseURL: clientBaseURL, email, password } = body as {
+    const {
+      baseURL: clientBaseURL,
+      email,
+      password,
+    } = body as {
       baseURL?: string;
       email?: string;
       password?: string;
@@ -119,10 +130,18 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({ email: sanitizedEmail.toLowerCase(), password }),
       });
     } catch (fetchError) {
-      logRequest("LOGIN", { email: sanitizedEmail, ip: clientIP, success: false });
+      logRequest("LOGIN", {
+        email: sanitizedEmail,
+        ip: clientIP,
+        success: false,
+      });
       // 网络连接错误
-      const errMsg = fetchError instanceof Error ? fetchError.message.toLowerCase() : "";
-      if (errMsg.includes("econnrefused") || errMsg.includes("connection refused")) {
+      const errMsg =
+        fetchError instanceof Error ? fetchError.message.toLowerCase() : "";
+      if (
+        errMsg.includes("econnrefused") ||
+        errMsg.includes("connection refused")
+      ) {
         return errorResponse("无法连接到服务器，请检查服务是否启动", 503);
       }
       if (errMsg.includes("enotfound") || errMsg.includes("dns")) {
@@ -135,9 +154,13 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json().catch(() => ({}));
-    
+
     if (!res.ok) {
-      logRequest("LOGIN", { email: sanitizedEmail, ip: clientIP, success: false });
+      logRequest("LOGIN", {
+        email: sanitizedEmail,
+        ip: clientIP,
+        success: false,
+      });
       // 根据状态码返回具体的中文错误
       if (res.status === 401) {
         return errorResponse("用户名或密码错误", 401);
@@ -157,7 +180,11 @@ export async function POST(req: NextRequest) {
     const code = (data as { code?: number }).code;
     const payload = (data as { data?: unknown }).data;
     if (code !== 0 || !payload) {
-      logRequest("LOGIN", { email: sanitizedEmail, ip: clientIP, success: false });
+      logRequest("LOGIN", {
+        email: sanitizedEmail,
+        ip: clientIP,
+        success: false,
+      });
       return errorResponse("用户名或密码错误", 400);
     }
 
@@ -165,7 +192,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(payload);
   } catch (e) {
     // 不暴露内部错误详情
-    console.error("Login error:", e instanceof Error ? e.message : "Unknown error");
+    console.error(
+      "Login error:",
+      e instanceof Error ? e.message : "Unknown error",
+    );
     return errorResponse("服务器错误，请稍后重试", 500);
   }
 }

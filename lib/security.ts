@@ -1,7 +1,7 @@
 /**
  * 安全工具函数
  * 提供加密存储、CSRF Token、安全 JSON 解析、敏感信息脱敏等功能
- * 
+ *
  * 安全增强说明：
  * - 使用 AES-GCM 替代 XOR 混淆，提供真正的加密保护
  * - 使用 Web Crypto API (SubtleCrypto) 进行加密操作
@@ -10,8 +10,8 @@
 
 /** 加密版本标识，用于区分不同加密算法 */
 const ENCRYPTION_VERSION = {
-  XOR: 1,      // 旧版 XOR 混淆（已弃用，仅用于迁移）
-  AES_GCM: 2,  // AES-GCM 加密
+  XOR: 1, // 旧版 XOR 混淆（已弃用，仅用于迁移）
+  AES_GCM: 2, // AES-GCM 加密
 } as const;
 
 /** 加密数据格式：version:data */
@@ -24,64 +24,64 @@ type EncryptedData = string;
 export class CryptoService {
   private key: CryptoKey | null = null;
   private keyPromise: Promise<CryptoKey> | null = null;
-  
+
   /**
    * 获取或生成加密密钥
    * 使用 PBKDF2 从设备指纹派生密钥
    */
   private async getOrCreateKey(): Promise<CryptoKey> {
     if (this.key) return this.key;
-    
+
     // 避免并发创建密钥
     if (this.keyPromise) return this.keyPromise;
-    
+
     this.keyPromise = this.deriveKey();
     this.key = await this.keyPromise;
     return this.key;
   }
-  
+
   /**
    * 从设备指纹派生 AES-GCM 密钥
    */
   private async deriveKey(): Promise<CryptoKey> {
     // 获取设备指纹作为密钥材料
     const fingerprint = this.getDeviceFingerprint();
-    
+
     // 将指纹转换为 ArrayBuffer
     const encoder = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
-      'raw',
+      "raw",
       encoder.encode(fingerprint),
-      'PBKDF2',
+      "PBKDF2",
       false,
-      ['deriveKey']
+      ["deriveKey"],
     );
-    
+
     // 使用固定的盐值（生产环境应使用随机盐并存储）
     // 注意：这里使用固定盐是为了确保同一设备能解密之前加密的数据
-    const salt = encoder.encode('webchat-secure-storage-v1');
-    
+    const salt = encoder.encode("webchat-secure-storage-v1");
+
     // 派生 AES-GCM 密钥
     return crypto.subtle.deriveKey(
       {
-        name: 'PBKDF2',
+        name: "PBKDF2",
         salt,
         iterations: 100000,
-        hash: 'SHA-256',
+        hash: "SHA-256",
       },
       keyMaterial,
-      { name: 'AES-GCM', length: 256 },
+      { name: "AES-GCM", length: 256 },
       false,
-      ['encrypt', 'decrypt']
+      ["encrypt", "decrypt"],
     );
   }
-  
+
   /**
    * 获取设备指纹
    */
   private getDeviceFingerprint(): string {
     if (typeof window === "undefined") return "";
-    
+
     const fingerprint = [
       navigator.userAgent,
       navigator.language,
@@ -89,10 +89,10 @@ export class CryptoService {
       screen.height,
       new Date().getTimezoneOffset(),
     ].join("|");
-    
+
     return fingerprint;
   }
-  
+
   /**
    * 加密文本
    * @param plaintext 明文
@@ -102,28 +102,28 @@ export class CryptoService {
     if (typeof window === "undefined" || !crypto.subtle) {
       throw new Error("加密不可用：需要安全上下文（HTTPS）");
     }
-    
+
     const key = await this.getOrCreateKey();
     const encoder = new TextEncoder();
     const data = encoder.encode(plaintext);
-    
+
     // 生成随机 IV（初始化向量）
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    
+
     // 加密
     const ciphertext = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: iv as BufferSource },
+      { name: "AES-GCM", iv: iv as BufferSource },
       key,
-      data as BufferSource
+      data as BufferSource,
     );
-    
+
     // 组合格式：version:iv:ciphertext（均为 base64 编码）
     const ivBase64 = this.arrayBufferToBase64(iv);
     const ciphertextBase64 = this.arrayBufferToBase64(ciphertext);
-    
+
     return `${ENCRYPTION_VERSION.AES_GCM}:${ivBase64}:${ciphertextBase64}`;
   }
-  
+
   /**
    * 解密数据
    * @param encryptedData 加密的数据
@@ -133,43 +133,43 @@ export class CryptoService {
     if (typeof window === "undefined" || !crypto.subtle) {
       throw new Error("解密不可用：需要安全上下文（HTTPS）");
     }
-    
+
     // 解析版本
-    const parts = encryptedData.split(':');
+    const parts = encryptedData.split(":");
     const version = parseInt(parts[0], 10);
-    
+
     // 处理旧版 XOR 加密数据（迁移）
     if (version === ENCRYPTION_VERSION.XOR) {
       return this.migrateFromXOR(parts[1]);
     }
-    
+
     // AES-GCM 解密
     if (version === ENCRYPTION_VERSION.AES_GCM) {
       const ivBase64 = parts[1];
       const ciphertextBase64 = parts[2];
-      
+
       if (!ivBase64 || !ciphertextBase64) {
         throw new Error("无效的加密数据格式");
       }
-      
+
       const key = await this.getOrCreateKey();
-      
+
       const iv = this.base64ToArrayBuffer(ivBase64);
       const ciphertext = this.base64ToArrayBuffer(ciphertextBase64);
-      
+
       const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: iv as BufferSource },
+        { name: "AES-GCM", iv: iv as BufferSource },
         key,
-        ciphertext as BufferSource
+        ciphertext as BufferSource,
       );
-      
+
       const decoder = new TextDecoder();
       return decoder.decode(decrypted);
     }
-    
+
     throw new Error(`不支持的加密版本: ${version}`);
   }
-  
+
   /**
    * 从旧版 XOR 加密迁移
    * @param xorData XOR 加密的数据
@@ -178,31 +178,34 @@ export class CryptoService {
   private migrateFromXOR(xorData: string): string {
     const fingerprint = this.getDeviceFingerprint();
     const key = btoa(fingerprint).slice(0, 32);
-    
+
     try {
       const text = atob(xorData);
       let result = "";
       for (let i = 0; i < text.length; i++) {
-        result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        result += String.fromCharCode(
+          text.charCodeAt(i) ^ key.charCodeAt(i % key.length),
+        );
       }
       return result;
     } catch {
       throw new Error("XOR 数据迁移失败");
     }
   }
-  
+
   /**
    * ArrayBuffer 转 Base64
    */
   private arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
-    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    const bytes =
+      buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
     let binary = "";
     for (let i = 0; i < bytes.length; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
     return btoa(binary);
   }
-  
+
   /**
    * Base64 转 ArrayBuffer
    */
@@ -214,14 +217,16 @@ export class CryptoService {
     }
     return bytes;
   }
-  
+
   /**
    * 检查是否支持加密
    */
   static isSupported(): boolean {
-    return typeof window !== "undefined" && 
-           typeof crypto !== "undefined" && 
-           typeof crypto.subtle !== "undefined";
+    return (
+      typeof window !== "undefined" &&
+      typeof crypto !== "undefined" &&
+      typeof crypto.subtle !== "undefined"
+    );
   }
 }
 
@@ -231,7 +236,7 @@ export const cryptoService = new CryptoService();
 /**
  * 安全存储类
  * 提供加密的 localStorage 操作
- * 
+ *
  * 注意：现在使用异步 API 进行加密操作
  */
 export class SecureStorage {
@@ -244,7 +249,7 @@ export class SecureStorage {
     this.key = this.getLegacyKey();
     this.cryptoService = new CryptoService();
   }
-  
+
   /**
    * 获取旧版密钥（用于迁移）
    */
@@ -267,10 +272,10 @@ export class SecureStorage {
    */
   async setItemAsync(key: string, value: unknown): Promise<void> {
     if (typeof window === "undefined") return;
-    
+
     try {
       const json = JSON.stringify(value);
-      
+
       // 检查是否支持 AES-GCM
       if (CryptoService.isSupported()) {
         const encrypted = await this.cryptoService.encrypt(json);
@@ -294,27 +299,27 @@ export class SecureStorage {
    */
   async getItemAsync<T>(key: string): Promise<T | null> {
     if (typeof window === "undefined") return null;
-    
+
     try {
       const encrypted = localStorage.getItem(key);
       if (!encrypted) return null;
-      
+
       // 检查是否支持 AES-GCM
       if (CryptoService.isSupported()) {
         const decrypted = await this.cryptoService.decrypt(encrypted);
         if (!decrypted) return null;
-        
+
         // 如果数据是从 XOR 迁移过来的，自动重新加密
         if (encrypted.startsWith(`${ENCRYPTION_VERSION.XOR}:`)) {
           // 异步重新加密，不阻塞返回
           this.setItemAsync(key, JSON.parse(decrypted)).catch(console.error);
         }
-        
+
         return JSON.parse(decrypted) as T;
       } else {
         // 降级解密
         console.warn("Web Crypto API 不可用，使用降级解密");
-        const parts = encrypted.split(':');
+        const parts = encrypted.split(":");
         const data = parts.length > 1 ? parts[1] : encrypted;
         const decrypted = this.xorDecrypt(data, this.key);
         if (!decrypted) return null;
@@ -353,11 +358,11 @@ export class SecureStorage {
     try {
       const encrypted = localStorage.getItem(key);
       if (!encrypted) return null;
-      
+
       // 处理带版本前缀的数据
-      const parts = encrypted.split(':');
+      const parts = encrypted.split(":");
       const data = parts.length > 1 ? parts[1] : encrypted;
-      
+
       const decrypted = this.xorDecrypt(data, this.key);
       if (!decrypted) return null;
       return JSON.parse(decrypted) as T;
@@ -373,7 +378,9 @@ export class SecureStorage {
   private xorEncrypt(text: string, key: string): string {
     let result = "";
     for (let i = 0; i < text.length; i++) {
-      result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+      result += String.fromCharCode(
+        text.charCodeAt(i) ^ key.charCodeAt(i % key.length),
+      );
     }
     return btoa(result);
   }
@@ -387,7 +394,9 @@ export class SecureStorage {
       const text = atob(encrypted);
       let result = "";
       for (let i = 0; i < text.length; i++) {
-        result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        result += String.fromCharCode(
+          text.charCodeAt(i) ^ key.charCodeAt(i % key.length),
+        );
       }
       return result;
     } catch {
@@ -412,7 +421,7 @@ export class SecureStorage {
     localStorage.clear();
     this.migrationKeys.clear();
   }
-  
+
   /**
    * 迁移所有旧数据到 AES-GCM
    * @returns 迁移的数据数量
@@ -421,9 +430,9 @@ export class SecureStorage {
     if (typeof window === "undefined" || !CryptoService.isSupported()) {
       return 0;
     }
-    
+
     let migratedCount = 0;
-    
+
     for (const key of this.migrationKeys) {
       try {
         const data = await this.getItemAsync(key);
@@ -435,7 +444,7 @@ export class SecureStorage {
         console.error(`迁移 key ${key} 失败:`, e);
       }
     }
-    
+
     this.migrationKeys.clear();
     return migratedCount;
   }
@@ -450,11 +459,11 @@ export const secureStorage = new SecureStorage();
  */
 export function generateCSRFToken(): string {
   if (typeof window === "undefined") return "";
-  
+
   // 使用 crypto API 生成随机值
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  
+
   // 转换为 base64 并移除特殊字符
   return btoa(String.fromCharCode(...array))
     .replace(/\+/g, "-")
@@ -468,12 +477,19 @@ export function generateCSRFToken(): string {
  * @param storedToken 存储的 token（可选，默认从 sessionStorage 获取）
  * @returns 是否有效
  */
-export function validateCSRFToken(token: string, storedToken?: string): boolean {
+export function validateCSRFToken(
+  token: string,
+  storedToken?: string,
+): boolean {
   if (!token) return false;
-  
-  const expected = storedToken || (typeof window !== "undefined" ? sessionStorage.getItem("csrf_token") : null);
+
+  const expected =
+    storedToken ||
+    (typeof window !== "undefined"
+      ? sessionStorage.getItem("csrf_token")
+      : null);
   if (!expected) return false;
-  
+
   // 使用时间常量比较防止时序攻击
   return timingSafeEqual(token, expected);
 }
@@ -483,7 +499,7 @@ export function validateCSRFToken(token: string, storedToken?: string): boolean 
  */
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
-  
+
   let result = 0;
   for (let i = 0; i < a.length; i++) {
     result |= a.charCodeAt(i) ^ b.charCodeAt(i);
@@ -538,7 +554,7 @@ export function maskSensitive(
     keepLast?: number;
     /** 脱敏字符 */
     maskChar?: string;
-  }
+  },
 ): string {
   if (!value) return "";
 
@@ -548,9 +564,12 @@ export function maskSensitive(
     case "email": {
       const [localPart, domain] = value.split("@");
       if (!domain) return value;
-      const maskedLocal = localPart.length > 2
-        ? localPart[0] + maskChar.repeat(localPart.length - 2) + localPart[localPart.length - 1]
-        : localPart[0] + maskChar;
+      const maskedLocal =
+        localPart.length > 2
+          ? localPart[0] +
+            maskChar.repeat(localPart.length - 2) +
+            localPart[localPart.length - 1]
+          : localPart[0] + maskChar;
       return `${maskedLocal}@${domain}`;
     }
 
@@ -561,12 +580,16 @@ export function maskSensitive(
 
     case "idcard": {
       if (value.length < 8) return value;
-      return value.slice(0, 4) + maskChar.repeat(value.length - 8) + value.slice(-4);
+      return (
+        value.slice(0, 4) + maskChar.repeat(value.length - 8) + value.slice(-4)
+      );
     }
 
     case "bankcard": {
       if (value.length < 8) return value;
-      return value.slice(0, 4) + maskChar.repeat(value.length - 8) + value.slice(-4);
+      return (
+        value.slice(0, 4) + maskChar.repeat(value.length - 8) + value.slice(-4)
+      );
     }
 
     case "password": {
@@ -595,10 +618,10 @@ export function maskSensitive(
  */
 export function generateRandomString(length: number = 32): string {
   if (typeof window === "undefined") return "";
-  
+
   const array = new Uint8Array(length);
   crypto.getRandomValues(array);
-  
+
   // 使用 base64 编码并移除特殊字符
   return btoa(String.fromCharCode(...array))
     .replace(/\+/g, "-")
@@ -635,10 +658,10 @@ export function safeParseURL(url: string): URL | null {
  */
 export function isSameOrigin(url: string): boolean {
   if (typeof window === "undefined") return false;
-  
+
   const parsed = safeParseURL(url);
   if (!parsed) return false;
-  
+
   return parsed.origin === window.location.origin;
 }
 
@@ -647,9 +670,11 @@ export function isSameOrigin(url: string): boolean {
  */
 export function safeBase64Encode(str: string): string {
   try {
-    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => {
-      return String.fromCharCode(parseInt(p1, 16));
-    }));
+    return btoa(
+      encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => {
+        return String.fromCharCode(parseInt(p1, 16));
+      }),
+    );
   } catch {
     return "";
   }
@@ -660,9 +685,14 @@ export function safeBase64Encode(str: string): string {
  */
 export function safeBase64Decode(base64: string): string {
   try {
-    return decodeURIComponent(atob(base64).split("").map((c) => {
-      return "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(""));
+    return decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => {
+          return `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`;
+        })
+        .join(""),
+    );
   } catch {
     return "";
   }

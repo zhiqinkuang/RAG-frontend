@@ -4,15 +4,18 @@
  */
 
 /** 邮箱验证正则表达式 */
-const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 
 /** 用户名验证正则表达式：3-20字符，字母数字下划线 */
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 
 /** URL 验证正则表达式 */
-const URL_REGEX = /^(https?:\/\/)?(([\da-z\.-]+)\.([a-z\.]{2,6})|localhost|(\d{1,3}\.){3}\d{1,3})(:[0-9]{1,5})?(\/[\w\.\-~:/?#[\]@!$&'()*+,;=%]*)?$/i;
+const URL_REGEX =
+  /^(https?:\/\/)?(([\da-z.-]+)\.([a-z.]{2,6})|localhost|(\d{1,3}\.){3}\d{1,3})(:[0-9]{1,5})?(\/[\w.\-~:/?#[\]@!$&'()*+,;=%]*)?$/i;
 
 /** 危险字符正则表达式 */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: 用于过滤危险控制字符
 const DANGEROUS_CHARS_REGEX = /[<>'"&\x00-\x1f\x7f-\x9f]/g;
 
 /** 密码强度验证结果 */
@@ -40,7 +43,7 @@ export function validateEmail(email: string): ValidationResult {
   }
 
   const trimmed = email.trim().toLowerCase();
-  
+
   if (trimmed.length === 0) {
     return { valid: false, error: "请输入邮箱" };
   }
@@ -104,16 +107,27 @@ export function validatePassword(password: string): PasswordStrength {
   }
 
   // 包含特殊字符（加分项）
-  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
     result.score = Math.min(result.score + 1, 4);
   }
 
   // 检查常见弱密码
   const commonPasswords = [
-    "password", "Password1", "12345678", "qwerty", "abc123",
-    "Password123", "Admin123", "Welcome1", "Letmein1",
+    "password",
+    "Password1",
+    "12345678",
+    "qwerty",
+    "abc123",
+    "Password123",
+    "Admin123",
+    "Welcome1",
+    "Letmein1",
   ];
-  if (commonPasswords.some(p => password.toLowerCase().includes(p.toLowerCase()))) {
+  if (
+    commonPasswords.some((p) =>
+      password.toLowerCase().includes(p.toLowerCase()),
+    )
+  ) {
     result.warnings.push("密码包含常见模式，建议使用更复杂的密码");
   }
 
@@ -123,7 +137,11 @@ export function validatePassword(password: string): PasswordStrength {
   }
 
   // 检查连续数字或字母
-  if (/(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i.test(password)) {
+  if (
+    /(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i.test(
+      password,
+    )
+  ) {
     result.warnings.push("密码包含连续字符");
   }
 
@@ -178,9 +196,7 @@ export function sanitizeInput(input: string): string {
     return "";
   }
 
-  return input
-    .replace(DANGEROUS_CHARS_REGEX, "")
-    .trim();
+  return input.replace(DANGEROUS_CHARS_REGEX, "").trim();
 }
 
 /**
@@ -216,7 +232,7 @@ export function validateURL(
     requireHttps?: boolean;
     allowLocalhost?: boolean;
     allowedProtocols?: string[];
-  }
+  },
 ): ValidationResult {
   if (!url || typeof url !== "string") {
     return { valid: false, error: "请输入 URL" };
@@ -237,7 +253,7 @@ export function validateURL(
     const parsed = new URL(
       trimmed.startsWith("http://") || trimmed.startsWith("https://")
         ? trimmed
-        : `https://${trimmed}`
+        : `https://${trimmed}`,
     );
 
     // 检查协议
@@ -274,7 +290,7 @@ export function validateLength(
   input: string,
   min: number,
   max: number,
-  fieldName: string = "输入"
+  fieldName: string = "输入",
 ): ValidationResult {
   if (!input || typeof input !== "string") {
     return { valid: false, error: `请输入${fieldName}` };
@@ -301,7 +317,7 @@ export function validateLength(
  */
 export function composeValidators<T>(
   value: T,
-  validators: Array<(value: T) => ValidationResult>
+  validators: Array<(value: T) => ValidationResult>,
 ): ValidationResult {
   for (const validator of validators) {
     const result = validator(value);

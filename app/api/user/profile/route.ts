@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     if (!auth) {
       return NextResponse.json(
         { error: "缺少 Authorization 请求头" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     if (!res.ok) {
       return NextResponse.json(
         { error: (data as { message?: string }).message ?? "请求失败" },
-        { status: res.status }
+        { status: res.status },
       );
     }
 
@@ -53,7 +53,7 @@ export async function GET(req: Request) {
     if (code !== 0) {
       return NextResponse.json(
         { error: (data as { message?: string }).message ?? "请求失败" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -71,7 +71,7 @@ export async function PUT(req: Request) {
     if (!auth?.startsWith("Bearer ")) {
       return NextResponse.json(
         { error: "缺少 Authorization 请求头" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -96,7 +96,7 @@ export async function PUT(req: Request) {
     if (!res.ok) {
       return NextResponse.json(
         { error: (data as { message?: string }).message ?? "更新失败" },
-        { status: res.status }
+        { status: res.status },
       );
     }
 
@@ -105,7 +105,7 @@ export async function PUT(req: Request) {
     if (code !== 0) {
       return NextResponse.json(
         { error: (data as { message?: string }).message ?? "更新失败" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 

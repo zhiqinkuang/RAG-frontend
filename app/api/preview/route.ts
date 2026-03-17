@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const contentType = res.headers.get("content-type") || "application/octet-stream";
+    const contentType =
+      res.headers.get("content-type") || "application/octet-stream";
     const body = res.body;
     if (!body) {
       return NextResponse.json({ error: "后端响应为空" }, { status: 502 });

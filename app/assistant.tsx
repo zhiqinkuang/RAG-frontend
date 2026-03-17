@@ -13,7 +13,11 @@ import {
   useAISDKRuntime,
 } from "@assistant-ui/react-ai-sdk";
 import { useChat } from "@ai-sdk/react";
-import { lastAssistantMessageIsCompleteWithToolCalls, type UIMessage, type UIMessageChunk } from "ai";
+import {
+  lastAssistantMessageIsCompleteWithToolCalls,
+  type UIMessage,
+  type UIMessageChunk,
+} from "ai";
 import { Thread } from "@/components/assistant-ui/thread";
 import {
   SidebarInset,
@@ -21,26 +25,44 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThreadListSidebar } from "@/components/assistant-ui/threadlist-sidebar";
-import { SettingsDialog, useApiKey, type ApiKeySettings } from "@/components/settings-dialog";
+import { useApiKey, type ApiKeySettings } from "@/components/settings-dialog";
 import { DocumentSidebar } from "@/components/document-sidebar";
 import { useI18n } from "@/lib/i18n";
-import { Component, useMemo, useState, useCallback, useEffect, useRef, type FC, type ReactNode } from "react";
+import {
+  Component,
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type FC,
+  type ReactNode,
+} from "react";
 import { getProvider } from "@/lib/providers";
 import { QueueContext, useQueue, type QueueItem } from "@/lib/queue-context";
 import type { Attachment } from "@assistant-ui/react";
 import { customAttachmentAdapter } from "@/lib/attachment-adapter";
-import { LocalStorageThreadListAdapter, setOnThreadDeletedCallback } from "@/lib/local-thread-list-adapter";
+import {
+  LocalStorageThreadListAdapter,
+  setOnThreadDeletedCallback,
+} from "@/lib/local-thread-list-adapter";
 import { createThreadHistoryAdapter } from "@/lib/message-store";
 import { listKnowledgeBases, type KnowledgeBase } from "@/lib/rag-kb";
 
-type SendMessagesOptions = Parameters<AssistantChatTransport<UIMessage>["sendMessages"]>[0];
+type SendMessagesOptions = Parameters<
+  AssistantChatTransport<UIMessage>["sendMessages"]
+>[0];
 type SendMessagesResult = ReadableStream<UIMessageChunk>;
 
 class CustomChatTransport extends AssistantChatTransport<UIMessage> {
   private getSettings: () => ApiKeySettings;
   private getSelectedDocIds: () => number[];
 
-  constructor(options: { api: string; getSettings: () => ApiKeySettings; getSelectedDocIds: () => number[] }) {
+  constructor(options: {
+    api: string;
+    getSettings: () => ApiKeySettings;
+    getSelectedDocIds: () => number[];
+  }) {
     super({
       ...options,
       // 自定义 fetch 禁用缓冲
@@ -68,7 +90,11 @@ class CustomChatTransport extends AssistantChatTransport<UIMessage> {
       baseURL: settings.baseURL || undefined,
       model: settings.model,
     };
-    if (settings.provider === "rag" && settings.knowledgeBaseId != null && settings.knowledgeBaseId > 0) {
+    if (
+      settings.provider === "rag" &&
+      settings.knowledgeBaseId != null &&
+      settings.knowledgeBaseId > 0
+    ) {
       next.knowledgeBaseId = settings.knowledgeBaseId;
       // 添加选中的文档 ID
       const selectedDocIds = this.getSelectedDocIds();
@@ -79,7 +105,9 @@ class CustomChatTransport extends AssistantChatTransport<UIMessage> {
     return { ...options, body: next };
   }
 
-  override sendMessages(options: SendMessagesOptions): Promise<SendMessagesResult> {
+  override sendMessages(
+    options: SendMessagesOptions,
+  ): Promise<SendMessagesResult> {
     return super.sendMessages(this.injectSettings(options));
   }
 }
@@ -97,7 +125,9 @@ function useDynamicChatTransport(transport: AssistantChatTransport<UIMessage>) {
     () =>
       new Proxy(transportRef.current, {
         get(_, prop) {
-          const res = (transportRef.current as unknown as Record<string, unknown>)[prop as string];
+          const res = (
+            transportRef.current as unknown as Record<string, unknown>
+          )[prop as string];
           return typeof res === "function"
             ? (res as Function).bind(transportRef.current)
             : res;
@@ -118,7 +148,10 @@ function useThreadRuntime(options: {
   const dynamicTransport = useDynamicChatTransport(options.transport);
   const id = useAuiState(({ threadListItem }) => threadListItem?.id);
 
-  const historyAdapter = useMemo(() => id ? createThreadHistoryAdapter(id) : null, [id]);
+  const historyAdapter = useMemo(
+    () => (id ? createThreadHistoryAdapter(id) : null),
+    [id],
+  );
 
   const chat = useChat({
     id,
@@ -167,11 +200,13 @@ const AutoSendQueue: FC = () => {
 // 处理删除当前对话后自动切换
 const ThreadDeleteHandler: FC = () => {
   const aui = useAui();
-  const currentThreadId = useAuiState(({ threadListItem }) => threadListItem?.id);
+  const currentThreadId = useAuiState(
+    ({ threadListItem }) => threadListItem?.id,
+  );
 
   useEffect(() => {
     if (!currentThreadId) return;
-    
+
     setOnThreadDeletedCallback((deletedId, remainingThreads) => {
       // 如果删除的是当前对话
       if (deletedId === currentThreadId) {
@@ -229,9 +264,18 @@ const AssistantContent: FC<{
   selectedDocIds: number[];
   onSelectedDocIdsChange: (docIds: number[]) => void;
   docRefreshKey: number;
-}> = ({ transport, adapter, getSettings, displayModel, knowledgeBaseId, selectedDocIds, onSelectedDocIdsChange, docRefreshKey }) => {
+}> = ({
+  transport,
+  adapter,
+  getSettings,
+  displayModel,
+  knowledgeBaseId,
+  selectedDocIds,
+  onSelectedDocIdsChange,
+  docRefreshKey,
+}) => {
   const { t } = useI18n();
-  
+
   const runtime = unstable_useRemoteThreadListRuntime({
     runtimeHook: function RuntimeHook() {
       return useThreadRuntime({ transport, getSettings });
@@ -248,17 +292,17 @@ const AssistantContent: FC<{
         <div className="flex h-dvh w-full pr-0.5">
           <ThreadListSidebar />
           <SidebarInset>
-            <header className="flex h-12 sm:h-16 shrink-0 items-center gap-2 border-b px-2 sm:px-4">
+            <header className="flex h-12 shrink-0 items-center gap-2 border-b px-2 sm:h-16 sm:px-4">
               <SidebarTrigger className="-ml-1" />
-              <h1 className="text-xs sm:text-sm font-medium truncate">
+              <h1 className="truncate font-medium text-xs sm:text-sm">
                 {t.chat}{" "}
-                <span className="font-normal text-muted-foreground hidden sm:inline">
+                <span className="hidden font-normal text-muted-foreground sm:inline">
                   · {displayModel}
                 </span>
               </h1>
             </header>
-            <div className="flex flex-1 min-h-0 overflow-hidden">
-              <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <Thread />
               </div>
               {getSettings().provider === "rag" && (
@@ -324,7 +368,7 @@ export const Assistant = () => {
 
   useEffect(() => {
     refreshDisplayModel();
-  }, [refreshDisplayModel, knowledgeBases]);
+  }, [refreshDisplayModel]);
 
   // 监听设置变化事件
   useEffect(() => {
@@ -341,12 +385,15 @@ export const Assistant = () => {
 
   const [queueItems, setQueueItems] = useState<QueueItem[]>([]);
 
-  const addQueueItem = useCallback((text: string, attachments?: Attachment[]) => {
-    setQueueItems((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), text, attachments: attachments ?? [] },
-    ]);
-  }, []);
+  const addQueueItem = useCallback(
+    (text: string, attachments?: Attachment[]) => {
+      setQueueItems((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), text, attachments: attachments ?? [] },
+      ]);
+    },
+    [],
+  );
 
   const removeQueueItem = useCallback((id: string) => {
     setQueueItems((prev) => prev.filter((item) => item.id !== id));
@@ -356,11 +403,12 @@ export const Assistant = () => {
   selectedDocIdsRef.current = selectedDocIds;
 
   const transport = useMemo(
-    () => new CustomChatTransport({ 
-      api: "/api/chat", 
-      getSettings,
-      getSelectedDocIds: () => selectedDocIdsRef.current,
-    }),
+    () =>
+      new CustomChatTransport({
+        api: "/api/chat",
+        getSettings,
+        getSelectedDocIds: () => selectedDocIdsRef.current,
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [getSettings],
   );
@@ -368,16 +416,24 @@ export const Assistant = () => {
   const adapter = useMemo(() => new LocalStorageThreadListAdapter(), []);
 
   // 获取当前知识库 ID
-  const currentKnowledgeBaseId = getSettings().provider === "rag" ? getSettings().knowledgeBaseId : undefined;
+  const currentKnowledgeBaseId =
+    getSettings().provider === "rag"
+      ? getSettings().knowledgeBaseId
+      : undefined;
 
   // 当知识库切换时清空选中的文档
   useEffect(() => {
     setSelectedDocIds([]);
-  }, [currentKnowledgeBaseId]);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: 只需要在组件挂载时执行一次
+  }, []);
 
   return (
     <QueueContext.Provider
-      value={{ items: queueItems, addItem: addQueueItem, removeItem: removeQueueItem }}
+      value={{
+        items: queueItems,
+        addItem: addQueueItem,
+        removeItem: removeQueueItem,
+      }}
     >
       <RuntimeErrorBoundary>
         <AssistantContent

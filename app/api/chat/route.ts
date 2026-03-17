@@ -1,7 +1,6 @@
 // 禁用 Next.js 响应缓冲，确保流式传输
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-import { frontendTools } from "@assistant-ui/react-ai-sdk";
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
 import { getProvider, type ProviderId } from "@/lib/providers";
@@ -58,7 +57,16 @@ function buildMockStreamChunks(lastUserContent: string) {
   return chunks;
 }
 
-type MessagePart = { type?: string; text?: string; image?: string; data?: string; url?: string; mimeType?: string; mediaType?: string; filename?: string };
+type MessagePart = {
+  type?: string;
+  text?: string;
+  image?: string;
+  data?: string;
+  url?: string;
+  mimeType?: string;
+  mediaType?: string;
+  filename?: string;
+};
 
 /** 从单条 UIMessage 取 parts 或 content（兼容 AI SDK / assistant-ui） */
 function getMessageParts(msg: UIMessage): MessagePart[] | undefined {
@@ -74,7 +82,10 @@ function getMessageText(msg: UIMessage): string {
   const parts = getMessageParts(msg);
   if (!parts) return "";
   return parts
-    .filter((p): p is { type: "text"; text: string } => p?.type === "text" && typeof p?.text === "string")
+    .filter(
+      (p): p is { type: "text"; text: string } =>
+        p?.type === "text" && typeof p?.text === "string",
+    )
     .map((p) => p.text)
     .join("");
 }
@@ -91,12 +102,20 @@ type OpenAIContent =
 function getImageUrlsFromParts(parts: MessagePart[]): string[] {
   const urls: string[] = [];
   for (const p of parts) {
-    const mime = (p as { mimeType?: string; mediaType?: string }).mimeType ?? (p as { mediaType?: string }).mediaType ?? "";
-    if (p?.type === "image" && typeof (p as { image?: string }).image === "string") {
+    const mime =
+      (p as { mimeType?: string; mediaType?: string }).mimeType ??
+      (p as { mediaType?: string }).mediaType ??
+      "";
+    if (
+      p?.type === "image" &&
+      typeof (p as { image?: string }).image === "string"
+    ) {
       const img = (p as { image: string }).image;
       urls.push(img.startsWith("data:") ? img : `data:image/png;base64,${img}`);
     } else if (p?.type === "file" && mime.startsWith("image/")) {
-      const raw = (p as { data?: string; url?: string }).data ?? (p as { url?: string }).url;
+      const raw =
+        (p as { data?: string; url?: string }).data ??
+        (p as { url?: string }).url;
       if (typeof raw === "string") urls.push(raw);
     }
   }
@@ -127,8 +146,10 @@ function getNonImageFilesFromParts(parts: MessagePart[]): NonImageFile[] {
 function fileTypeLabel(mimeType: string): string {
   if (mimeType === "application/pdf") return "PDF";
   if (mimeType.includes("word") || mimeType.includes("msword")) return "Word";
-  if (mimeType.includes("spreadsheet") || mimeType.includes("excel")) return "Excel";
-  if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "PowerPoint";
+  if (mimeType.includes("spreadsheet") || mimeType.includes("excel"))
+    return "Excel";
+  if (mimeType.includes("presentation") || mimeType.includes("powerpoint"))
+    return "PowerPoint";
   if (mimeType.startsWith("video/")) return "Video";
   if (mimeType.startsWith("audio/")) return "Audio";
   if (mimeType.startsWith("text/")) return "Text";
@@ -139,11 +160,17 @@ function toOpenAIContent(msg: UIMessage): OpenAIContent {
   const parts = getMessageParts(msg);
   if (!parts || parts.length === 0) return "";
 
-  const textParts = parts.filter((p): p is { type: "text"; text: string } => p?.type === "text" && typeof p?.text === "string");
+  const textParts = parts.filter(
+    (p): p is { type: "text"; text: string } =>
+      p?.type === "text" && typeof p?.text === "string",
+  );
   const imageUrls = getImageUrlsFromParts(parts);
   const nonImageFiles = getNonImageFilesFromParts(parts);
 
-  let text = textParts.map((p) => p.text).join("").trim();
+  let text = textParts
+    .map((p) => p.text)
+    .join("")
+    .trim();
 
   if (nonImageFiles.length > 0) {
     const notes = nonImageFiles
@@ -163,12 +190,23 @@ function toOpenAIContent(msg: UIMessage): OpenAIContent {
 }
 
 /** 转换为 RAG 自定义接口 /api/chat 所需的消息格式：id, role, content, parts */
-function toRagMessages(messages: UIMessage[]): Array<{ id: string; role: string; content: string; parts: Array<{ type: string; text?: string }> }> {
+function toRagMessages(messages: UIMessage[]): Array<{
+  id: string;
+  role: string;
+  content: string;
+  parts: Array<{ type: string; text?: string }>;
+}> {
   return messages.map((msg) => {
-    const parts = getMessageParts(msg) ?? [];
+    const _parts = getMessageParts(msg) ?? [];
     const textContent = getMessageText(msg);
-    const role = (msg as { role?: string }).role === "human" ? "user" : String((msg as { role?: string }).role ?? "user");
-    const id = String((msg as { id?: string }).id ?? `msg-${Math.random().toString(36).slice(2, 11)}`);
+    const role =
+      (msg as { role?: string }).role === "human"
+        ? "user"
+        : String((msg as { role?: string }).role ?? "user");
+    const id = String(
+      (msg as { id?: string }).id ??
+        `msg-${Math.random().toString(36).slice(2, 11)}`,
+    );
     if (role === "assistant") {
       return {
         id,
@@ -187,14 +225,22 @@ function toRagMessages(messages: UIMessage[]): Array<{ id: string; role: string;
 }
 
 /** 转换 UI 消息为 OpenAI 兼容格式（支持文本 + 图片） */
-function toOpenAIMessages(messages: UIMessage[], system?: string): Array<{ role: string; content: OpenAIContent }> {
+function toOpenAIMessages(
+  messages: UIMessage[],
+  system?: string,
+): Array<{ role: string; content: OpenAIContent }> {
   const out: Array<{ role: string; content: OpenAIContent }> = [];
   if (system) out.push({ role: "system", content: system });
 
   for (const msg of messages) {
     const content = toOpenAIContent(msg);
     const rawRole: string = msg.role;
-    const role = rawRole === "human" ? "user" : rawRole === "assistant" ? "assistant" : String(rawRole || "user");
+    const role =
+      rawRole === "human"
+        ? "user"
+        : rawRole === "assistant"
+          ? "assistant"
+          : String(rawRole || "user");
     if (role !== "system") {
       out.push({ role, content });
     }
@@ -209,7 +255,7 @@ async function streamChat(
   apiKey: string,
   model: string,
   messages: UIMessage[],
-  system?: string
+  system?: string,
 ): Promise<Response> {
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "请先配置 API Key" }), {
@@ -218,7 +264,7 @@ async function streamChat(
     });
   }
 
-  const url = baseURL.replace(/\/$/, "") + "/chat/completions";
+  const url = `${baseURL.replace(/\/$/, "")}/chat/completions`;
   const openAIMessages = toOpenAIMessages(messages, system);
   const body = {
     model: model || "doubao-seed-2-0-lite-260215",
@@ -228,7 +274,16 @@ async function streamChat(
 
   if (process.env.NODE_ENV === "development" && openAIMessages.length > 0) {
     const last = openAIMessages[openAIMessages.length - 1];
-    console.log("[chat] url:", url, "model:", model || "(empty)", "messages:", openAIMessages.length, "last role:", last?.role);
+    console.log(
+      "[chat] url:",
+      url,
+      "model:",
+      model || "(empty)",
+      "messages:",
+      openAIMessages.length,
+      "last role:",
+      last?.role,
+    );
   }
 
   const response = await fetch(url, {
@@ -243,18 +298,26 @@ async function streamChat(
   if (!response.ok) {
     const error = await response.text();
     console.error("Chat API error:", error);
-    return new Response(JSON.stringify({ error: `API 错误: ${response.status} - ${error}` }), {
-      status: response.status,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: `API 错误: ${response.status} - ${error}` }),
+      {
+        status: response.status,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   return response;
 }
 
 /** 保证是合法的 ReadableStream，避免客户端 response.body.pipeThrough 报 undefined */
-function ensureReadableStream(stream: ReadableStream<Uint8Array> | null | undefined): ReadableStream<Uint8Array> {
-  if (stream != null && typeof (stream as ReadableStream).getReader === "function") {
+function ensureReadableStream(
+  stream: ReadableStream<Uint8Array> | null | undefined,
+): ReadableStream<Uint8Array> {
+  if (
+    stream != null &&
+    typeof (stream as ReadableStream).getReader === "function"
+  ) {
     return stream as ReadableStream<Uint8Array>;
   }
   return new ReadableStream({
@@ -265,7 +328,9 @@ function ensureReadableStream(stream: ReadableStream<Uint8Array> | null | undefi
 }
 
 /** 将 OpenAI 兼容的 SSE 流转换为 AI SDK UI Message Stream 格式 (SSE)，支持 reasoning（如 DeepSeek reasoning_content） */
-function transformToUIMessageStream(response: Response): ReadableStream<Uint8Array> {
+function transformToUIMessageStream(
+  response: Response,
+): ReadableStream<Uint8Array> {
   const reader = response.body?.getReader();
   if (!reader) {
     return ensureReadableStream(null);
@@ -274,14 +339,14 @@ function transformToUIMessageStream(response: Response): ReadableStream<Uint8Arr
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
   const idSuffix = Math.random().toString(36).slice(2, 11);
-  const textId = "text-" + idSuffix;
-  const reasoningId = "reasoning-" + idSuffix;
+  const textId = `text-${idSuffix}`;
+  const reasoningId = `reasoning-${idSuffix}`;
   let buffer = "";
   let reasoningStarted = false;
   let textStarted = false;
 
   function sseLine(obj: unknown) {
-    return "data: " + JSON.stringify(obj) + "\n\n";
+    return `data: ${JSON.stringify(obj)}\n\n`;
   }
 
   return new ReadableStream({
@@ -306,7 +371,8 @@ function transformToUIMessageStream(response: Response): ReadableStream<Uint8Arr
                 const delta = choice?.delta;
                 // 思考过程：DeepSeek 等使用 delta.reasoning_content
                 const reasoningChunk =
-                  typeof (delta as { reasoning_content?: string } | undefined)?.reasoning_content === "string"
+                  typeof (delta as { reasoning_content?: string } | undefined)
+                    ?.reasoning_content === "string"
                     ? (delta as { reasoning_content: string }).reasoning_content
                     : "";
                 // 正文：delta.content（OpenAI/豆包）或 delta.text
@@ -321,21 +387,49 @@ function transformToUIMessageStream(response: Response): ReadableStream<Uint8Arr
 
                 if (reasoningChunk) {
                   if (!reasoningStarted) {
-                    controller.enqueue(encoder.encode(sseLine({ type: "reasoning-start", id: reasoningId })));
+                    controller.enqueue(
+                      encoder.encode(
+                        sseLine({ type: "reasoning-start", id: reasoningId }),
+                      ),
+                    );
                     reasoningStarted = true;
                   }
-                  controller.enqueue(encoder.encode(sseLine({ type: "reasoning-delta", id: reasoningId, delta: reasoningChunk })));
+                  controller.enqueue(
+                    encoder.encode(
+                      sseLine({
+                        type: "reasoning-delta",
+                        id: reasoningId,
+                        delta: reasoningChunk,
+                      }),
+                    ),
+                  );
                 }
                 if (textChunk) {
                   if (reasoningStarted) {
-                    controller.enqueue(encoder.encode(sseLine({ type: "reasoning-end", id: reasoningId })));
+                    controller.enqueue(
+                      encoder.encode(
+                        sseLine({ type: "reasoning-end", id: reasoningId }),
+                      ),
+                    );
                     reasoningStarted = false;
                   }
                   if (!textStarted) {
-                    controller.enqueue(encoder.encode(sseLine({ type: "text-start", id: textId })));
+                    controller.enqueue(
+                      encoder.encode(
+                        sseLine({ type: "text-start", id: textId }),
+                      ),
+                    );
                     textStarted = true;
                   }
-                  controller.enqueue(encoder.encode(sseLine({ type: "text-delta", id: textId, delta: textChunk })));
+                  controller.enqueue(
+                    encoder.encode(
+                      sseLine({
+                        type: "text-delta",
+                        id: textId,
+                        delta: textChunk,
+                      }),
+                    ),
+                  );
                 }
               } catch {
                 // 忽略解析错误
@@ -345,14 +439,22 @@ function transformToUIMessageStream(response: Response): ReadableStream<Uint8Arr
         }
 
         if (reasoningStarted) {
-          controller.enqueue(encoder.encode(sseLine({ type: "reasoning-end", id: reasoningId })));
+          controller.enqueue(
+            encoder.encode(sseLine({ type: "reasoning-end", id: reasoningId })),
+          );
         }
         if (textStarted) {
-          controller.enqueue(encoder.encode(sseLine({ type: "text-end", id: textId })));
+          controller.enqueue(
+            encoder.encode(sseLine({ type: "text-end", id: textId })),
+          );
         } else {
           // 无正文时仍发送空 text 块，保证客户端结构一致
-          controller.enqueue(encoder.encode(sseLine({ type: "text-start", id: textId })));
-          controller.enqueue(encoder.encode(sseLine({ type: "text-end", id: textId })));
+          controller.enqueue(
+            encoder.encode(sseLine({ type: "text-start", id: textId })),
+          );
+          controller.enqueue(
+            encoder.encode(sseLine({ type: "text-end", id: textId })),
+          );
         }
         controller.enqueue(encoder.encode(sseLine({ type: "finish" })));
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
@@ -376,7 +478,7 @@ export async function POST(req: Request) {
     const {
       messages,
       system,
-      tools,
+      tools: _tools,
       provider: providerId,
       apiKey,
       baseURL: requestBaseURL,
@@ -397,7 +499,8 @@ export async function POST(req: Request) {
 
     const provider = (providerId ?? "doubao") as ProviderId;
     const prov = getProvider(provider);
-    const effectiveApiKey = apiKey ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
+    const effectiveApiKey =
+      apiKey ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
     const effectiveBaseURL = requestBaseURL || prov.baseURL;
     const effectiveModel = model || prov.defaultModel;
 
@@ -441,14 +544,16 @@ export async function POST(req: Request) {
       if (!base) {
         return jsonErrorResponse("请填写 RAG 后端地址 (Base URL)", 400);
       }
-      
+
       // 自动获取用户的知识库
       let kbId = knowledgeBaseId;
       if (typeof kbId !== "number" || kbId <= 0) {
         // 从后端获取用户的知识库列表
         try {
           const kbListURL = `${base}/api/v1/knowledge-bases?page=1&page_size=1`;
-          const kbHeaders: Record<string, string> = { "Content-Type": "application/json" };
+          const kbHeaders: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
           if (effectiveApiKey) {
             kbHeaders["Authorization"] = `Bearer ${effectiveApiKey}`;
           }
@@ -464,13 +569,15 @@ export async function POST(req: Request) {
           console.error("Failed to auto-fetch knowledge bases:", e);
         }
       }
-      
+
       if (typeof kbId !== "number" || kbId <= 0) {
         return jsonErrorResponse("您还没有知识库，请先在设置中创建知识库", 400);
       }
-      
+
       const apiURL = `${base}/api/chat`;
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       if (effectiveApiKey) {
         headers["Authorization"] = `Bearer ${effectiveApiKey}`;
       }
@@ -491,8 +598,13 @@ export async function POST(req: Request) {
       if (!apiResponse.ok) {
         const errorText = await apiResponse.text().catch(() => "Unknown error");
         return new Response(
-          JSON.stringify({ error: errorText || `RAG API error: ${apiResponse.status}` }),
-          { status: apiResponse.status, headers: { "Content-Type": "application/json" } }
+          JSON.stringify({
+            error: errorText || `RAG API error: ${apiResponse.status}`,
+          }),
+          {
+            status: apiResponse.status,
+            headers: { "Content-Type": "application/json" },
+          },
         );
       }
 
@@ -523,7 +635,7 @@ export async function POST(req: Request) {
         headers: {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache, no-transform",
-          "Connection": "keep-alive",
+          Connection: "keep-alive",
           "x-vercel-ai-ui-message-stream": "v1",
           "X-Accel-Buffering": "no",
         },
@@ -536,7 +648,9 @@ export async function POST(req: Request) {
       if (!apiURL) {
         return jsonErrorResponse("请填写自定义 API 地址", 400);
       }
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       if (effectiveApiKey) {
         headers["Authorization"] = `Bearer ${effectiveApiKey}`;
       }
@@ -553,8 +667,13 @@ export async function POST(req: Request) {
       if (!apiResponse.ok) {
         const errorText = await apiResponse.text().catch(() => "Unknown error");
         return new Response(
-          JSON.stringify({ error: errorText || `Custom API error: ${apiResponse.status}` }),
-          { status: apiResponse.status, headers: { "Content-Type": "application/json" } }
+          JSON.stringify({
+            error: errorText || `Custom API error: ${apiResponse.status}`,
+          }),
+          {
+            status: apiResponse.status,
+            headers: { "Content-Type": "application/json" },
+          },
         );
       }
 
@@ -562,7 +681,7 @@ export async function POST(req: Request) {
         headers: {
           "Content-Type": "text/event-stream",
           "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
+          Connection: "keep-alive",
           "x-vercel-ai-ui-message-stream": "v1",
         },
       });
@@ -574,12 +693,13 @@ export async function POST(req: Request) {
       effectiveApiKey || "",
       effectiveModel,
       messages,
-      system
+      system,
     );
 
     if (!chatResponse.ok) {
       const errorText = await chatResponse.text().catch(() => "Unknown error");
-      let message = errorText?.trim() || `Request failed: ${chatResponse.status}`;
+      let message =
+        errorText?.trim() || `Request failed: ${chatResponse.status}`;
       if (chatResponse.status === 404 && provider === "doubao") {
         message =
           "豆包接口 404：请确认 1) 模型填写的是火山引擎控制台中的「推理接入点 ID」（形如 ep-xxxxxxxx），不是模型名称；2) Base URL 为 https://ark.cn-beijing.volces.com/api/v3；3) API Key 有效且该 Key 有该接入点的调用权限。原始错误: " +
@@ -596,7 +716,7 @@ export async function POST(req: Request) {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
+        Connection: "keep-alive",
         "x-vercel-ai-ui-message-stream": "v1",
       },
     });

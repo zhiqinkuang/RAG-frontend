@@ -52,10 +52,14 @@ export async function searchPapers(
     maxResults?: number;
     naturalLanguage?: boolean;
     offset?: number;
-  }
+  },
 ): Promise<SearchResult> {
-  const { maxResults = 10, naturalLanguage = false, offset = 0 } = options || {};
-  
+  const {
+    maxResults = 10,
+    naturalLanguage = false,
+    offset = 0,
+  } = options || {};
+
   const url = new URL(`${RAG_BACKEND_URL}/api/v1/papers/search`);
   url.searchParams.set("query", query);
   url.searchParams.set("max_results", String(maxResults));
@@ -73,7 +77,7 @@ export async function searchPapers(
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(
-        errorData.message || `HTTP ${res.status}: ${res.statusText}`
+        errorData.message || `HTTP ${res.status}: ${res.statusText}`,
       );
     }
 
@@ -85,7 +89,7 @@ export async function searchPapers(
         papers: data.data.papers || [],
         total: data.data.total || 0,
         query: data.data.query || query,
-        hasMore: data.data.has_more ?? (data.data.papers?.length >= maxResults),
+        hasMore: data.data.has_more ?? data.data.papers?.length >= maxResults,
       };
     }
 
@@ -94,11 +98,13 @@ export async function searchPapers(
       papers: data.papers || [],
       total: data.total || 0,
       query: data.query || query,
-      hasMore: data.has_more ?? (data.papers?.length >= maxResults),
+      hasMore: data.has_more ?? data.papers?.length >= maxResults,
     };
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {
-      throw new Error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+      throw new Error(
+        "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+      );
     }
     throw e;
   }
@@ -134,25 +140,28 @@ export async function smartSearchPapers(
   options?: {
     maxResults?: number;
     offset?: number;
-  }
+  },
 ): Promise<SmartSearchResult> {
   const { maxResults = 10, offset = 0 } = options || {};
 
   try {
-    const res = await fetch(`${getRagBackendUrl()}/api/v1/papers/smart-search`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        query,
-        max_results: maxResults,
-        offset,
-      }),
-    });
+    const res = await fetch(
+      `${getRagBackendUrl()}/api/v1/papers/smart-search`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          query,
+          max_results: maxResults,
+          offset,
+        }),
+      },
+    );
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
       throw new Error(
-        errorData.message || `HTTP ${res.status}: ${res.statusText}`
+        errorData.message || `HTTP ${res.status}: ${res.statusText}`,
       );
     }
 
@@ -164,7 +173,7 @@ export async function smartSearchPapers(
         papers: data.data.papers || [],
         total: data.data.total || 0,
         query: data.data.query || query,
-        hasMore: data.data.has_more ?? (data.data.papers?.length >= maxResults),
+        hasMore: data.data.has_more ?? data.data.papers?.length >= maxResults,
         detected_type: data.data.detected_type,
         extracted_info: data.data.extracted_info,
         original_query: data.data.original_query,
@@ -176,14 +185,16 @@ export async function smartSearchPapers(
       papers: data.papers || [],
       total: data.total || 0,
       query: data.query || query,
-      hasMore: data.has_more ?? (data.papers?.length >= maxResults),
+      hasMore: data.has_more ?? data.papers?.length >= maxResults,
       detected_type: data.detected_type,
       extracted_info: data.extracted_info,
       original_query: data.original_query,
     };
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {
-      throw new Error("无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)");
+      throw new Error(
+        "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+      );
     }
     throw e;
   }
@@ -196,7 +207,7 @@ export async function smartSearchPapers(
  */
 export async function downloadPaperToKB(
   arxivId: string,
-  kbId: number
+  kbId: number,
 ): Promise<DownloadResult> {
   try {
     const res = await fetch(`${RAG_BACKEND_URL}/api/v1/papers/download`, {
