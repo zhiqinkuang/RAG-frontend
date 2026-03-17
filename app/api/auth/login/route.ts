@@ -48,6 +48,20 @@ function logRequest(action: string, info: { email?: string; ip?: string; success
   console.log(`[${timestamp}] ${action}: email=${maskedEmail}, ip=${maskedIP}, success=${info.success}`);
 }
 
+/** 获取 RAG 后端 URL（优先服务端环境变量） */
+function getRagBackendUrl(clientBaseURL?: string): string {
+  // 优先使用服务端环境变量（生产部署）
+  if (process.env.RAG_API_URL) {
+    return process.env.RAG_API_URL.replace(/\/$/, "");
+  }
+  // 其次使用客户端传入的 baseURL（本地开发）
+  if (clientBaseURL) {
+    return clientBaseURL.replace(/\/$/, "");
+  }
+  // 默认本地开发地址
+  return "http://127.0.0.1:8080";
+}
+
 /** 代理到 RAG 后端 POST /api/v1/auth/login */
 export async function POST(req: NextRequest) {
   // 获取客户端 IP
@@ -68,26 +82,22 @@ export async function POST(req: NextRequest) {
       return errorResponse("请求数据格式错误", 400);
     }
 
-    const { baseURL, email, password } = body as {
+    const { baseURL: clientBaseURL, email, password } = body as {
       baseURL?: string;
       email?: string;
       password?: string;
     };
 
     // 验证必填字段
-    if (!baseURL || !email || !password) {
+    if (!email || !password) {
       return errorResponse("请填写完整的登录信息", 400);
     }
 
-    // 消毒输入
-    const sanitizedBaseURL = sanitizeInput(baseURL);
-    const sanitizedEmail = sanitizeInput(email);
+    // 获取后端 URL（优先服务端环境变量）
+    const base = getRagBackendUrl(clientBaseURL);
 
-    // 验证 Base URL
-    const baseURLResult = validateURL(sanitizedBaseURL, { allowLocalhost: true });
-    if (!baseURLResult.valid) {
-      return errorResponse("服务器地址格式错误", 400);
-    }
+    // 消毒输入
+    const sanitizedEmail = sanitizeInput(email);
 
     // 验证邮箱格式
     const emailResult = validateEmail(sanitizedEmail);
@@ -99,8 +109,6 @@ export async function POST(req: NextRequest) {
     if (typeof password !== "string" || password.length === 0) {
       return errorResponse("请输入密码", 400);
     }
-
-    const base = sanitizedBaseURL.replace(/\/$/, "");
 
     // 调用后端 API
     let res: Response;

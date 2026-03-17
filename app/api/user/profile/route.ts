@@ -1,28 +1,43 @@
 import { NextResponse } from "next/server";
 
-function getBaseAndAuth(req: Request): { base: string; auth: string } | null {
+/** 获取 RAG 后端 URL（优先服务端环境变量） */
+function getRagBackendUrl(clientBaseURL?: string): string {
+  // 优先使用服务端环境变量（生产部署）
+  if (process.env.RAG_API_URL) {
+    return process.env.RAG_API_URL.replace(/\/$/, "");
+  }
+  // 其次使用客户端传入的 baseURL（本地开发）
+  if (clientBaseURL) {
+    return clientBaseURL.replace(/\/$/, "");
+  }
+  // 默认本地开发地址
+  return "http://127.0.0.1:8080";
+}
+
+function getAuth(req: Request): string | null {
   const auth = req.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) return null;
-  const url = new URL(req.url);
-  const base = url.searchParams.get("baseURL")?.replace(/\/$/, "");
-  if (!base) return null;
-  return { base, auth };
+  return auth;
 }
 
 /** 代理到 RAG 后端 GET /api/v1/user/profile */
 export async function GET(req: Request) {
   try {
-    const ctx = getBaseAndAuth(req);
-    if (!ctx) {
+    const auth = getAuth(req);
+    if (!auth) {
       return NextResponse.json(
-        { error: "缺少必要参数：baseURL 和 Authorization 请求头" },
+        { error: "缺少 Authorization 请求头" },
         { status: 400 }
       );
     }
 
-    const res = await fetch(`${ctx.base}/api/v1/user/profile`, {
+    const url = new URL(req.url);
+    const clientBaseURL = url.searchParams.get("baseURL") ?? undefined;
+    const base = getRagBackendUrl(clientBaseURL);
+
+    const res = await fetch(`${base}/api/v1/user/profile`, {
       method: "GET",
-      headers: { Authorization: ctx.auth },
+      headers: { Authorization: auth },
     });
 
     const data = await res.json().catch(() => ({}));
@@ -61,18 +76,12 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { baseURL, ...profile } = body as {
+    const { baseURL: clientBaseURL, ...profile } = body as {
       baseURL?: string;
       username?: string;
       avatar?: string;
     };
-    const base = baseURL?.replace(/\/$/, "");
-    if (!base) {
-      return NextResponse.json(
-        { error: "缺少 baseURL 参数" },
-        { status: 400 }
-      );
-    }
+    const base = getRagBackendUrl(clientBaseURL);
 
     const res = await fetch(`${base}/api/v1/user/profile`, {
       method: "PUT",
