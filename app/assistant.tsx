@@ -228,7 +228,8 @@ const AssistantContent: FC<{
   knowledgeBaseId: number | undefined;
   selectedDocIds: number[];
   onSelectedDocIdsChange: (docIds: number[]) => void;
-}> = ({ transport, adapter, getSettings, displayModel, knowledgeBaseId, selectedDocIds, onSelectedDocIdsChange }) => {
+  docRefreshKey: number;
+}> = ({ transport, adapter, getSettings, displayModel, knowledgeBaseId, selectedDocIds, onSelectedDocIdsChange, docRefreshKey }) => {
   const { t } = useI18n();
   
   const runtime = unstable_useRemoteThreadListRuntime({
@@ -265,6 +266,7 @@ const AssistantContent: FC<{
                   knowledgeBaseId={knowledgeBaseId}
                   selectedDocIds={selectedDocIds}
                   onSelectionChange={onSelectedDocIdsChange}
+                  refreshKey={docRefreshKey}
                 />
               )}
             </div>
@@ -280,6 +282,7 @@ export const Assistant = () => {
   const { t } = useI18n();
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [selectedDocIds, setSelectedDocIds] = useState<number[]>([]);
+  const [docRefreshKey, setDocRefreshKey] = useState(0); // 用于刷新文档侧边栏
   const [displayModel, setDisplayModel] = useState(() => {
     const s = getSettings();
     const prov = getProvider(s.provider);
@@ -327,6 +330,8 @@ export const Assistant = () => {
   useEffect(() => {
     const handleSettingsChange = () => {
       refreshDisplayModel();
+      // 刷新文档侧边栏
+      setDocRefreshKey((k) => k + 1);
     };
     window.addEventListener("settings-changed", handleSettingsChange);
     return () => {
@@ -347,13 +352,17 @@ export const Assistant = () => {
     setQueueItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
+  const selectedDocIdsRef = useRef(selectedDocIds);
+  selectedDocIdsRef.current = selectedDocIds;
+
   const transport = useMemo(
     () => new CustomChatTransport({ 
       api: "/api/chat", 
       getSettings,
-      getSelectedDocIds: () => selectedDocIds,
+      getSelectedDocIds: () => selectedDocIdsRef.current,
     }),
-    [getSettings, selectedDocIds],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getSettings],
   );
 
   const adapter = useMemo(() => new LocalStorageThreadListAdapter(), []);
@@ -379,6 +388,7 @@ export const Assistant = () => {
           knowledgeBaseId={currentKnowledgeBaseId}
           selectedDocIds={selectedDocIds}
           onSelectedDocIdsChange={setSelectedDocIds}
+          docRefreshKey={docRefreshKey}
         />
       </RuntimeErrorBoundary>
     </QueueContext.Provider>

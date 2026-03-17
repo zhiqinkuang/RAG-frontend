@@ -226,61 +226,68 @@ export async function ensureValidToken(baseURL: string): Promise<boolean> {
  */
 function sanitizeErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    // 不暴露内部错误详情
-    const message = error.message.toLowerCase();
+    const message = error.message;
+    
+    // 如果消息已经是中文，直接返回
+    if (/[\u4e00-\u9fa5]/.test(message)) {
+      return message;
+    }
+    
+    // 英文错误消息处理
+    const lowerMessage = message.toLowerCase();
     
     // 网络错误
-    if (message.includes("network") || message.includes("fetch") || message.includes("failed to fetch")) {
+    if (lowerMessage.includes("network") || lowerMessage.includes("fetch") || lowerMessage.includes("failed to fetch")) {
       return "网络连接失败，请检查网络设置";
     }
     
     // 超时错误
-    if (message.includes("timeout")) {
+    if (lowerMessage.includes("timeout")) {
       return "请求超时，请稍后重试";
     }
     
     // 认证错误 - 登录时表示用户名密码错误
-    if (message.includes("401") || message.includes("unauthorized")) {
+    if (lowerMessage.includes("401") || lowerMessage.includes("unauthorized")) {
       return "用户名或密码错误";
     }
     
     // 权限错误
-    if (message.includes("403") || message.includes("forbidden")) {
+    if (lowerMessage.includes("403") || lowerMessage.includes("forbidden")) {
       return "没有权限执行此操作";
     }
     
     // 服务器错误
-    if (message.includes("500") || message.includes("server error") || message.includes("internal error")) {
+    if (lowerMessage.includes("500") || lowerMessage.includes("server error") || lowerMessage.includes("internal error")) {
       return "服务器错误，请稍后重试";
     }
     
     // 服务不可用
-    if (message.includes("503") || message.includes("service unavailable")) {
+    if (lowerMessage.includes("503") || lowerMessage.includes("service unavailable")) {
       return "服务暂时不可用，请稍后重试";
     }
     
     // 连接被拒绝
-    if (message.includes("econnrefused") || message.includes("connection refused")) {
+    if (lowerMessage.includes("econnrefused") || lowerMessage.includes("connection refused")) {
       return "无法连接到服务器，请检查服务是否启动";
     }
     
     // DNS 解析失败
-    if (message.includes("enotfound") || message.includes("dns")) {
+    if (lowerMessage.includes("enotfound") || lowerMessage.includes("dns")) {
       return "无法解析服务器地址，请检查网络配置";
     }
     
     // 请求体过大
-    if (message.includes("413") || message.includes("too large")) {
+    if (lowerMessage.includes("413") || lowerMessage.includes("too large")) {
       return "请求数据过大";
     }
     
     // 请求频率限制
-    if (message.includes("429") || message.includes("too many")) {
+    if (lowerMessage.includes("429") || lowerMessage.includes("too many")) {
       return "请求过于频繁，请稍后重试";
     }
     
     // 登录失败（API 返回的具体错误）
-    if (message.includes("login failed") || message.includes("credentials")) {
+    if (lowerMessage.includes("login failed") || lowerMessage.includes("credentials")) {
       return "用户名或密码错误";
     }
     

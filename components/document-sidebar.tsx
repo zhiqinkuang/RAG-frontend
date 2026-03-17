@@ -2,10 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { FileText, Filter, X } from "lucide-react";
+import { FileText, Filter, X, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { listDocuments, type Document } from "@/lib/rag-kb";
 import { toast } from "sonner";
 
@@ -13,12 +19,14 @@ interface DocumentSidebarProps {
   knowledgeBaseId: number | undefined;
   selectedDocIds: number[];
   onSelectionChange: (docIds: number[]) => void;
+  refreshKey?: number; // 用于触发刷新
 }
 
 export function DocumentSidebar({
   knowledgeBaseId,
   selectedDocIds,
   onSelectionChange,
+  refreshKey,
 }: DocumentSidebarProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,7 +52,7 @@ export function DocumentSidebar({
       }
     };
     fetchDocs();
-  }, [knowledgeBaseId]);
+  }, [knowledgeBaseId, refreshKey]); // 添加 refreshKey 依赖
 
   const toggleDoc = (docId: number) => {
     if (selectedDocIds.includes(docId)) {
@@ -74,7 +82,7 @@ export function DocumentSidebar({
     <>
       {/* 右侧边栏：仅展开时渲染，隐藏时不占位、无右白边 */}
       {isOpen && knowledgeBaseId && (
-        <div className="w-56 shrink-0 border-l flex flex-col bg-muted/30 overflow-hidden animate-in slide-in-from-right-2 duration-300">
+        <div className="w-72 sm:w-80 shrink-0 border-l flex flex-col bg-muted/30 overflow-hidden animate-in slide-in-from-right-2 duration-300">
           <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
             <span className="text-sm font-medium">文档筛选</span>
             <Button
@@ -112,19 +120,32 @@ export function DocumentSidebar({
             ) : (
               <div className="p-1.5 space-y-0.5">
                 {documents.map((doc) => (
-                  <div
-                    key={doc.ID}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer"
-                    onClick={() => toggleDoc(doc.ID)}
-                  >
-                    <Checkbox
-                      checked={selectedDocIds.includes(doc.ID)}
-                      onCheckedChange={() => toggleDoc(doc.ID)}
-                      className="h-4 w-4"
-                    />
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="text-sm truncate flex-1">{doc.file_name}</span>
-                  </div>
+                  <ContextMenu key={doc.ID}>
+                    <ContextMenuTrigger asChild>
+                      <div
+                        className="flex items-center gap-2 px-2 py-2 rounded hover:bg-accent cursor-pointer"
+                        onClick={() => toggleDoc(doc.ID)}
+                      >
+                        <Checkbox
+                          checked={selectedDocIds.includes(doc.ID)}
+                          onCheckedChange={() => toggleDoc(doc.ID)}
+                          className="h-4 w-4 shrink-0"
+                        />
+                        <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="text-sm min-w-0 flex-1 break-all line-clamp-2" title={doc.file_name}>{doc.file_name}</span>
+                      </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem
+                        onClick={() => {
+                          window.open(`/preview?docId=${doc.ID}&name=${encodeURIComponent(doc.file_name)}`, '_blank');
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        预览文档
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
                 ))}
               </div>
             )}

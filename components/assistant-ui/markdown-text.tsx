@@ -33,6 +33,100 @@ function removeSourceTags(text: string): string {
     .replace(/\[(\d+)\]/g, "");
 }
 
+/**
+ * 自动包裹未包裹的 LaTeX 公式
+ * 1. 将 \[...\] 转为 $$...$$（display math）
+ * 2. 将 \(...\) 转为 $...$（inline math）
+ * 3. 识别裸 LaTeX 命令并用 $...$ 包裹
+ */
+function wrapLatexFormulas(text: string): string {
+  // Step 1: 将 \[...\] 转为 $$...$$
+  let result = text.replace(/\\\[([\s\S]*?)\\\]/g, (_match, inner) => {
+    return `$$${inner}$$`;
+  });
+
+  // Step 2: 将 \(...\) 转为 $...$
+  result = result.replace(/\\\(([\s\S]*?)\\\)/g, (_match, inner) => {
+    return `$${inner}$`;
+  });
+
+  // Step 3: 对于裸 LaTeX 命令（未被 $ 包裹的），添加 $...$ 包裹
+  // 先收集所有已被 $ 或 $$ 包裹的区间，避免重复处理
+  const protectedRanges: { start: number; end: number }[] = [];
+  // 匹配 $$...$$ (display)
+  const displayRegex = /\$\$[\s\S]*?\$\$/g;
+  let dm;
+  while ((dm = displayRegex.exec(result)) !== null) {
+    protectedRanges.push({ start: dm.index, end: dm.index + dm[0].length });
+  }
+  // 匹配 $...$ (inline, 非空)
+  const inlineRegex = /\$(?!\$)([^\n$]+?)\$/g;
+  let im;
+  while ((im = inlineRegex.exec(result)) !== null) {
+    protectedRanges.push({ start: im.index, end: im.index + im[0].length });
+  }
+  // 匹配 ```...``` 代码块
+  const codeBlockRegex = /```[\s\S]*?```/g;
+  let cb;
+  while ((cb = codeBlockRegex.exec(result)) !== null) {
+    protectedRanges.push({ start: cb.index, end: cb.index + cb[0].length });
+  }
+  // 匹配 `...` 行内代码
+  const inlineCodeRegex = /`[^`\n]+`/g;
+  let ic;
+  while ((ic = inlineCodeRegex.exec(result)) !== null) {
+    protectedRanges.push({ start: ic.index, end: ic.index + ic[0].length });
+  }
+
+  function isProtected(pos: number): boolean {
+    return protectedRanges.some(r => pos >= r.start && pos < r.end);
+  }
+
+  const latexPatterns = [
+    /\\frac\{[^}]*\}\{[^}]*\}/g,
+    /\\(sum|int|prod|lim|bigcup|bigcap|oint|iint|iiint)[_^]?(\{[^}]*\})?/g,
+    /([A-Za-z])[_^]\{[^}]+\}/g,
+    /\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Alpha|Beta|Gamma|Delta|Epsilon|Zeta|Eta|Theta|Iota|Kappa|Lambda|Mu|Nu|Xi|Pi|Rho|Sigma|Tau|Upsilon|Phi|Chi|Psi|Omega)(?![a-zA-Z])/g,
+    /\\text\{[^}]+\}/g,
+    /\\sqrt(\[[^\]]+\])?\{[^}]+\}/g,
+    /\\left[(\[{|][\s\S]*?\\right[)\]}|]/g,
+    /\\(overline|underline|hat|tilde|bar|vec|dot|ddot|breve|check|acute|grave)\{[^}]+\}/g,
+    /\\math(bb|bf|it|rm|cal|scr|frak)\{[^}]+\}/g,
+    /\\begin\{[^}]+\}[\s\S]*?\\end\{[^}]+\}/g,
+    /\\(partial|nabla|infty|pm|mp|times|div|cdot|leq|geq|neq|approx|equiv|sim|propto|subset|supset|supseteq|subseteq|in|notin|cup|cap|emptyset|forall|exists|neg|land|lor|implies|iff|rightarrow|leftarrow|Rightarrow|Leftarrow|leftrightarrow|Leftrightarrow|to|mapsto|circ|oplus|otimes|perp|angle|triangle|cong|parallel|not)(?![a-zA-Z])/g,
+    /\\(binom|choose)\{[^}]*\}\{[^}]*\}/g,
+    /\\(underbrace|overbrace)\{[^}]*\}/g,
+  ];
+
+  const combinedPattern = new RegExp(
+    latexPatterns.map(p => p.source).join('|'),
+    'g'
+  );
+
+  const matches: { start: number; end: number; text: string }[] = [];
+  let match;
+  while ((match = combinedPattern.exec(result)) !== null) {
+    if (isProtected(match.index)) continue;
+    matches.push({ start: match.index, end: match.index + match[0].length, text: match[0] });
+  }
+
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i];
+    result = result.slice(0, m.start) + '$' + m.text + '$' + result.slice(m.end);
+  }
+
+  return result;
+}
+
+/**
+ * 预处理文本：移除来源标签 + 自动包裹 LaTeX 公式
+ */
+function preprocessText(text: string): string {
+  let result = removeSourceTags(text);
+  result = wrapLatexFormulas(result);
+  return result;
+}
+
 const MarkdownTextImpl = () => {
   return (
     <MarkdownTextPrimitive
@@ -40,7 +134,7 @@ const MarkdownTextImpl = () => {
       rehypePlugins={[rehypeKatex]}
       className="aui-md"
       components={defaultComponents}
-      preprocess={removeSourceTags}
+      preprocess={preprocessText}
     />
   );
 };

@@ -80,15 +80,31 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // 监听 token 过期事件
     window.addEventListener(TOKEN_EXPIRED_EVENT, handleExpired);
-    
-    // 也监听认证状态变化事件（如登出）
-    window.addEventListener(AUTH_CHANGE_EVENT, handleExpired);
 
     return () => {
       window.removeEventListener(TOKEN_EXPIRED_EVENT, handleExpired);
-      window.removeEventListener(AUTH_CHANGE_EVENT, handleExpired);
     };
   }, [handleTokenExpired]);
+
+  // 监听认证状态变化，重新检查登录状态
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleAuthChange = () => {
+      // 重新检查登录状态，而不是清除认证
+      const token = getStoredRagToken();
+      if (token) {
+        setAllowed(true);
+        setChecking(false);
+      }
+    };
+
+    window.addEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
+
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange);
+    };
+  }, []);
 
   // 公开路径直接渲染
   if (isPublic) return <>{children}</>;

@@ -290,3 +290,9 @@ export function getDocStatusColor(status: number, progressPercent?: number): str
       return "text-gray-600 dark:text-gray-400";
   }
 }
+
+// 获取文档下载/预览 URL
+export function getDocumentDownloadUrl(docId: number): string {
+  const token = getStoredRagToken();
+  return `${RAG_BACKEND_URL}/api/v1/documents/${docId}/download?token=${token}`;
+}
