@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { validateEmail, validatePassword, validateUsername, validateURL, sanitizeInput } from "@/lib/validation";
+import { validateEmail, validatePassword, validateUsername, sanitizeInput } from "@/lib/validation";
 
 /** 请求体大小限制（字节）- 1MB */
 const MAX_BODY_SIZE = 1024 * 1024;
