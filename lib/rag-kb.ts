@@ -1,13 +1,10 @@
 /**
  * RAG 知识库管理 API 客户端
- * 注意：知识库 API 始终使用本地后端 http://127.0.0.1:8080
- * 不使用 localStorage 中的 baseURL（那是聊天 API 的地址）
+ * 使用 config.ts 中的统一配置管理 RAG 后端地址
  */
 
 import { getStoredRagToken } from "./rag-auth";
-
-/** RAG 后端地址 - 固定为本地后端 */
-const RAG_BACKEND_URL = "http://127.0.0.1:8080";
+import { getRagBackendUrl } from "./config";
 
 export type KnowledgeBase = {
   ID: number;
@@ -101,7 +98,7 @@ export async function listKnowledgeBases(
   pageSize = 20,
   keyword = "",
 ): Promise<KbListResponse> {
-  const url = new URL(`${RAG_BACKEND_URL}/api/v1/knowledge-bases`);
+  const url = new URL(`${getRagBackendUrl()}/api/v1/knowledge-bases`);
   url.searchParams.set("page", String(page));
   url.searchParams.set("page_size", String(pageSize));
   if (keyword) url.searchParams.set("keyword", keyword);
@@ -118,7 +115,7 @@ export async function listKnowledgeBases(
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {
       throw new Error(
-        "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+        `无法连接到服务器，请检查后端是否启动 (${getRagBackendUrl()})`,
       );
     }
     throw e;
@@ -132,7 +129,7 @@ export async function createKnowledgeBase(
   visibility = 0,
 ): Promise<KbCreateResponse> {
   try {
-    const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases`, {
+    const res = await fetch(`${getRagBackendUrl()}/api/v1/knowledge-bases`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({ name, description, visibility }),
@@ -144,7 +141,7 @@ export async function createKnowledgeBase(
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {
       throw new Error(
-        "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+        `无法连接到服务器，请检查后端是否启动 (${getRagBackendUrl()})`,
       );
     }
     throw e;
@@ -156,7 +153,7 @@ export async function updateKnowledgeBase(
   id: number,
   data: { name?: string; description?: string; visibility?: number },
 ): Promise<{ code: number; message: string; data: KnowledgeBase }> {
-  const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${id}`, {
+  const res = await fetch(`${getRagBackendUrl()}/api/v1/knowledge-bases/${id}`, {
     method: "PUT",
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -168,7 +165,7 @@ export async function updateKnowledgeBase(
 export async function deleteKnowledgeBase(
   id: number,
 ): Promise<{ code: number; message: string }> {
-  const res = await fetch(`${RAG_BACKEND_URL}/api/v1/knowledge-bases/${id}`, {
+  const res = await fetch(`${getRagBackendUrl()}/api/v1/knowledge-bases/${id}`, {
     method: "DELETE",
     headers: getAuthHeaders(),
   });
@@ -182,7 +179,7 @@ export async function listDocuments(
   pageSize = 20,
 ): Promise<DocListResponse> {
   const url = new URL(
-    `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents`,
+    `${getRagBackendUrl()}/api/v1/knowledge-bases/${kbId}/documents`,
   );
   url.searchParams.set("page", String(page));
   url.searchParams.set("page_size", String(pageSize));
@@ -206,7 +203,7 @@ export async function uploadDocuments(
   });
 
   const res = await fetch(
-    `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents`,
+    `${getRagBackendUrl()}/api/v1/knowledge-bases/${kbId}/documents`,
     {
       method: "POST",
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -222,7 +219,7 @@ export async function deleteDocument(
   docId: number,
 ): Promise<{ code: number; message: string }> {
   const res = await fetch(
-    `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents/${docId}`,
+    `${getRagBackendUrl()}/api/v1/knowledge-bases/${kbId}/documents/${docId}`,
     {
       method: "DELETE",
       headers: getAuthHeaders(),
@@ -237,7 +234,7 @@ export async function reprocessDocument(
   docId: number,
 ): Promise<{ code: number; message: string }> {
   const res = await fetch(
-    `${RAG_BACKEND_URL}/api/v1/knowledge-bases/${kbId}/documents/${docId}/reprocess`,
+    `${getRagBackendUrl()}/api/v1/knowledge-bases/${kbId}/documents/${docId}/reprocess`,
     {
       method: "POST",
       headers: getAuthHeaders(),
@@ -309,5 +306,5 @@ export function getDocStatusColor(
 // 获取文档下载/预览 URL
 export function getDocumentDownloadUrl(docId: number): string {
   const token = getStoredRagToken();
-  return `${RAG_BACKEND_URL}/api/v1/documents/${docId}/download?token=${token}`;
+  return `${getRagBackendUrl()}/api/v1/documents/${docId}/download?token=${token}`;
 }

@@ -33,6 +33,10 @@ RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Build argument for RAG API URL (set during docker build)
+ARG NEXT_PUBLIC_RAG_API_URL=http://127.0.0.1:8080
+ENV NEXT_PUBLIC_RAG_API_URL=$NEXT_PUBLIC_RAG_API_URL
+
 # Build the application
 RUN pnpm build
 
