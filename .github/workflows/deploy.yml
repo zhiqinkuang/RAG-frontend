@@ -68,9 +68,22 @@ jobs:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
-          command_timeout: 15m
+          command_timeout: 20m
           script: |
             cd /opt/rag
+            
+            # 配置 Docker 镜像加速器（阿里云）
+            mkdir -p /etc/docker
+            cat > /etc/docker/daemon.json << 'EOF'
+            {
+              "registry-mirrors": [
+                "https://docker.1ms.run",
+                "https://docker.xuanyuan.me"
+              ]
+            }
+            EOF
+            systemctl restart docker || true
+            sleep 5
             
             # 登录 GitHub Container Registry
             echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u zhiqinkuang --password-stdin
