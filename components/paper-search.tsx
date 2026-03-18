@@ -310,13 +310,8 @@ export function PaperSearch() {
   const [showSmartArea, setShowSmartArea] = useState(false); // 是否展开智能识别区域
 
   // 使用缓存 Hook
-  const {
-    getCachedResult,
-    setCachedResult,
-    getCacheInfo,
-    isFromCache,
-    setIsFromCache,
-  } = usePaperSearchCache();
+  const { getCachedResult, setCachedResult, getCacheInfo, setIsFromCache } =
+    usePaperSearchCache();
 
   // 使用下载状态 Hook
   const {

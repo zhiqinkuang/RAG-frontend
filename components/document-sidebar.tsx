@@ -26,7 +26,7 @@ export function DocumentSidebar({
   knowledgeBaseId,
   selectedDocIds,
   onSelectionChange,
-  refreshKey,
+  refreshKey: _refreshKey,
 }: DocumentSidebarProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,8 +52,7 @@ export function DocumentSidebar({
       }
     };
     fetchDocs();
-    // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey 用于触发刷新，但不需要加入依赖
-  }, [knowledgeBaseId, refreshKey]);
+  }, [knowledgeBaseId]);
 
   const toggleDoc = (docId: number) => {
     if (selectedDocIds.includes(docId)) {

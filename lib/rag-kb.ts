@@ -153,11 +153,14 @@ export async function updateKnowledgeBase(
   id: number,
   data: { name?: string; description?: string; visibility?: number },
 ): Promise<{ code: number; message: string; data: KnowledgeBase }> {
-  const res = await fetch(`${getRagBackendUrl()}/api/v1/knowledge-bases/${id}`, {
-    method: "PUT",
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
+  const res = await fetch(
+    `${getRagBackendUrl()}/api/v1/knowledge-bases/${id}`,
+    {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    },
+  );
   return res.json();
 }
 
@@ -165,10 +168,13 @@ export async function updateKnowledgeBase(
 export async function deleteKnowledgeBase(
   id: number,
 ): Promise<{ code: number; message: string }> {
-  const res = await fetch(`${getRagBackendUrl()}/api/v1/knowledge-bases/${id}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
+  const res = await fetch(
+    `${getRagBackendUrl()}/api/v1/knowledge-bases/${id}`,
+    {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    },
+  );
   return res.json();
 }
 

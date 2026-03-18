@@ -19,7 +19,7 @@ test("登录测试 - demo@rag.com", async ({ page }) => {
   console.log("当前URL:", url);
 
   // 检查错误提示
-  const bodyText = await page.textContent("body").catch(() => "");
+  const bodyText = (await page.textContent("body")) ?? "";
   console.log("页面内容片段:", bodyText.substring(0, 500));
 
   if (url.includes("/login")) {

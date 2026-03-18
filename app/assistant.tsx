@@ -424,7 +424,6 @@ export const Assistant = () => {
   // 当知识库切换时清空选中的文档
   useEffect(() => {
     setSelectedDocIds([]);
-    // biome-ignore lint/correctness/useExhaustiveDependencies: 只需要在组件挂载时执行一次
   }, []);
 
   return (

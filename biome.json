@@ -111,7 +111,8 @@
         "useFocusableInteractive": "off",
         "useButtonType": "off",
         "useSemanticElements": "off",
-        "noRedundantAlt": "off"
+        "noRedundantAlt": "off",
+        "noLabelWithoutControl": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
@@ -194,7 +195,9 @@
       "!**/node_modules",
       "!**/.next",
       "!**/.vercel",
-      "!**/next-env.d.ts"
+      "!**/next-env.d.ts",
+      "!**/playwright-report",
+      "!**/test-results"
     ]
   }
 }

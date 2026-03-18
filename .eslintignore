@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+build/
+dist/
+
+# Test reports
+playwright-report/
+test-results/
+coverage/
+
+# Generated files
+*.min.js
+*.min.css
+
+# Environment files
+.env*
+!.env.example
+
+# Cache
+.cache/

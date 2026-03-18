@@ -48,7 +48,7 @@ export function RagSettings({
   onKnowledgeBaseChange,
   selectedKbId,
 }: RagSettingsProps) {
-  const { t } = useI18n();
+  const { t: _t } = useI18n();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
   const [loading, setLoading] = useState(false);
