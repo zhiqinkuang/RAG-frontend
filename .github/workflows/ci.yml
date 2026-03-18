@@ -169,9 +169,15 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image: ${{ steps.image-name.outputs.image }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set image name (lowercase)
+        id: image-name
+        run: echo "image=ghcr.io/${{ github.repository_owner }}/rag-frontend" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -187,7 +193,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ${{ steps.image-name.outputs.image }}
           tags: |
             type=ref,event=branch
             type=sha,prefix=
@@ -311,7 +317,7 @@ jobs:
           command_timeout: 10m
           script: |
             docker load < /tmp/frontend-image.tar.gz
-            docker tag rag-frontend:latest ghcr.io/zhiqinkuang/rag-frontend:latest
+            docker tag rag-frontend:latest ${{ needs.docker.outputs.image }}:latest
             
             cd /opt/rag
             docker compose up -d frontend
