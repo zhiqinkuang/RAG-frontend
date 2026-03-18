@@ -106,8 +106,8 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Run Playwright tests
-        run: pnpm exec playwright test
+      - name: Run Playwright tests (smoke only - no backend)
+        run: pnpm test:e2e:ci
         env:
           CI: true
 

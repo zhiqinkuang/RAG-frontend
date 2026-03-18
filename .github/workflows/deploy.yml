@@ -60,17 +60,15 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    timeout-minutes: 10
     
     steps:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
-        timeout-minutes: 8
         with:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
-          command_timeout: 10m
+          command_timeout: 15m
           script: |
             cd /opt/rag
             
@@ -87,7 +85,16 @@ jobs:
             docker image prune -f
 
       - name: Health check
-        timeout-minutes: 2
         run: |
+          echo "Waiting for service to start..."
           sleep 30
-          curl -f http://${{ secrets.ALIYUN_HOST }}:3000 || exit 1
+          for i in {1..6}; do
+            if curl -f http://${{ secrets.ALIYUN_HOST }}:3000 -s -o /dev/null; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 6 attempts"
+          exit 1

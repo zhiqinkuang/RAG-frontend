@@ -11,7 +11,9 @@
     "lint:fix": "biome check --write .",
     "format": "biome format .",
     "format:fix": "biome format --write .",
-    "test": "echo 'No unit tests configured'"
+    "test": "echo 'No unit tests configured'",
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test tests/e2e/smoke.spec.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.26",

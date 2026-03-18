@@ -73,13 +73,15 @@ export default defineConfig({
     // },
   ],
 
-  // Auto-start dev server
-  webServer: {
-    command: "pnpm run dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120000,
-  },
+  // Auto-start dev server (only in CI)
+  webServer: process.env.CI
+    ? {
+        command: "pnpm run dev",
+        url: "http://localhost:3000",
+        reuseExistingServer: false,
+        timeout: 120000,
+      }
+    : undefined,
 
   // Global timeout
   timeout: 30000,
