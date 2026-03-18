@@ -3,7 +3,7 @@
  */
 
 import { getStoredRagToken } from "./rag-auth";
-import { RAG_BACKEND_URL, getRagBackendUrl } from "./config";
+import { getRagBackendUrl } from "./config";
 
 export type PaperSource = "arXiv";
 
@@ -60,7 +60,7 @@ export async function searchPapers(
     offset = 0,
   } = options || {};
 
-  const url = new URL(`${RAG_BACKEND_URL}/api/v1/papers/search`);
+  const url = new URL(`${getRagBackendUrl()}/api/v1/papers/search`);
   url.searchParams.set("query", query);
   url.searchParams.set("max_results", String(maxResults));
   url.searchParams.set("natural_language", String(naturalLanguage));
@@ -103,7 +103,7 @@ export async function searchPapers(
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {
       throw new Error(
-        "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+        `无法连接到服务器，请检查后端是否启动 (${getRagBackendUrl()})`,
       );
     }
     throw e;
@@ -193,7 +193,7 @@ export async function smartSearchPapers(
   } catch (e) {
     if (e instanceof TypeError && e.message === "Failed to fetch") {
       throw new Error(
-        "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+        `无法连接到服务器，请检查后端是否启动 (${getRagBackendUrl()})`,
       );
     }
     throw e;
@@ -210,7 +210,7 @@ export async function downloadPaperToKB(
   kbId: number,
 ): Promise<DownloadResult> {
   try {
-    const res = await fetch(`${RAG_BACKEND_URL}/api/v1/papers/download`, {
+    const res = await fetch(`${getRagBackendUrl()}/api/v1/papers/download`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify({

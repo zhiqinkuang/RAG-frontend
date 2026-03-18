@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { getRagBackendUrl } from "@/lib/config";
 import {
   Database,
   Upload,
@@ -134,7 +135,7 @@ export function RagSettings({
       const msg = e instanceof Error ? e.message : "网络错误";
       if (msg.includes("无法连接") || msg.includes("Failed to fetch")) {
         toast.error(
-          "无法连接到服务器，请检查后端是否启动 (http://127.0.0.1:8080)",
+          `无法连接到服务器，请检查后端是否启动 (${getRagBackendUrl()})`,
         );
       } else {
         toast.error(msg);

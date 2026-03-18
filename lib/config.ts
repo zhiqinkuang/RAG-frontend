@@ -21,11 +21,6 @@ export function getRagBackendUrl(): string {
 }
 
 /**
- * RAG 后端 URL（导出常量，用于非 React 环境）
- */
-export const RAG_BACKEND_URL = getRagBackendUrl();
-
-/**
  * 论文提取 API 端点
  */
 export function getPaperExtractUrl(): string {
