@@ -56,12 +56,30 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # 导出镜像用于直接传输
+      - name: Export Docker image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest | gzip > frontend-image.tar.gz
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-image
+          path: frontend-image.tar.gz
+          retention-days: 1
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     
     steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-image
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -72,29 +90,39 @@ jobs:
           script: |
             cd /opt/rag
             
-            # 配置 Docker 镜像加速器（阿里云）
-            mkdir -p /etc/docker
-            cat > /etc/docker/daemon.json << 'EOF'
-            {
-              "registry-mirrors": [
-                "https://docker.1ms.run",
-                "https://docker.xuanyuan.me"
-              ]
-            }
-            EOF
-            systemctl restart docker || true
-            sleep 5
+            # 停止旧容器
+            docker compose stop frontend || true
+
+      - name: Copy image to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+          source: frontend-image.tar.gz
+          target: /tmp
+
+      - name: Load and start container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ALIYUN_HOST }}
+          username: ${{ secrets.ALIYUN_USER }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+          command_timeout: 10m
+          script: |
+            # 加载镜像
+            docker load < /tmp/frontend-image.tar.gz
             
-            # 登录 GitHub Container Registry
-            echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u zhiqinkuang --password-stdin
+            # 标记镜像为 docker compose 使用的名称
+            docker tag ghcr.io/zhiqinkuang/rag-frontend:latest rag-frontend:latest
             
-            # 拉取最新镜像
-            docker compose pull frontend
+            cd /opt/rag
             
             # 重启服务
             docker compose up -d frontend
             
-            # 清理旧镜像
+            # 清理
+            rm /tmp/frontend-image.tar.gz
             docker image prune -f
 
       - name: Health check
