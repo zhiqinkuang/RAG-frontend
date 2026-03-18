@@ -15,12 +15,9 @@ import {
   validateUsername,
   type PasswordStrength,
 } from "@/lib/validation";
+import { getRagBackendUrl } from "@/lib/config";
 
 const STORAGE_KEY = "chat-settings";
-
-/** 默认 RAG 后端地址（优先使用环境变量） */
-const DEFAULT_RAG_BASE_URL =
-  process.env.NEXT_PUBLIC_RAG_API_URL || "http://127.0.0.1:8080";
 
 /** 密码强度指示器组件 */
 function PasswordStrengthIndicator({
@@ -149,14 +146,15 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      const ragBackendUrl = getRagBackendUrl();
       await ragRegister(
-        DEFAULT_RAG_BASE_URL,
+        ragBackendUrl,
         username.trim(),
         email.trim().toLowerCase(),
         password,
       );
       const res = await ragLogin(
-        DEFAULT_RAG_BASE_URL,
+        ragBackendUrl,
         email.trim().toLowerCase(),
         password,
       );
@@ -164,7 +162,7 @@ export default function RegisterPage() {
       const settings = {
         provider: "rag",
         apiKey: res.token,
-        baseURL: DEFAULT_RAG_BASE_URL,
+        baseURL: ragBackendUrl,
         model: getProvider("rag").defaultModel,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));

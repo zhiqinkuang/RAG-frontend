@@ -36,6 +36,7 @@ import {
   ragLogin,
   ragRegister,
 } from "@/lib/rag-auth";
+import { getRagBackendUrl } from "@/lib/config";
 import { RagSettings } from "@/components/rag-settings";
 
 export interface ApiKeySettings {
@@ -87,7 +88,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
     setAuthLoading(true);
     try {
       const res = await ragLogin(
-        settings.baseURL.trim() || "http://127.0.0.1:8080",
+        settings.baseURL.trim() || getRagBackendUrl(),
         authEmail.trim(),
         authPassword,
       );
@@ -117,7 +118,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
     setAuthLoading(true);
     try {
       await ragRegister(
-        settings.baseURL.trim() || "http://127.0.0.1:8080",
+        settings.baseURL.trim() || getRagBackendUrl(),
         authUsername.trim(),
         authEmail.trim(),
         authPassword,

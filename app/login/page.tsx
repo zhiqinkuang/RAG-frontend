@@ -10,15 +10,12 @@ import { useI18n } from "@/lib/i18n";
 import { ragLogin, setStoredRagAuth } from "@/lib/rag-auth";
 import { getProvider } from "@/lib/providers";
 import { validateEmail } from "@/lib/validation";
+import { getRagBackendUrl } from "@/lib/config";
 
 const STORAGE_KEY = "chat-settings";
 
 /** 防暴力破解：登录失败后禁用时间（毫秒） */
 const LOCKOUT_DURATION = 3000;
-
-/** 默认 RAG 后端地址（优先使用环境变量） */
-const DEFAULT_RAG_BASE_URL =
-  process.env.NEXT_PUBLIC_RAG_API_URL || "http://127.0.0.1:8080";
 
 export default function LoginPage() {
   const { t } = useI18n();
@@ -86,8 +83,9 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+      const ragBackendUrl = getRagBackendUrl();
       const res = await ragLogin(
-        DEFAULT_RAG_BASE_URL,
+        ragBackendUrl,
         email.trim().toLowerCase(),
         password,
       );
@@ -95,7 +93,7 @@ export default function LoginPage() {
       const settings = {
         provider: "rag",
         apiKey: res.token,
-        baseURL: DEFAULT_RAG_BASE_URL,
+        baseURL: ragBackendUrl,
         model: getProvider("rag").defaultModel,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
