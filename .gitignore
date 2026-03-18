@@ -13,6 +13,31 @@
 # testing
 /coverage
 
+# Playwright 测试结果
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# 测试截图（根目录下的测试截图）
+*-01-*.png
+*-02-*.png
+*-03-*.png
+*-04-*.png
+*-05-*.png
+*-06-*.png
+*-07-*.png
+*-08-*.png
+*-09-*.png
+*-10-*.png
+*-11-*.png
+*-12-*.png
+*-13-*.png
+*-14-*.png
+screenshot-*.png
+test-result.png
+login-page.png
+after-login.png
+
 # next.js
 /.next/
 /out/
