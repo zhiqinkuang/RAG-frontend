@@ -272,10 +272,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-image
-          path: /tmp
+          path: .
 
       - name: Check artifact
-        run: ls -la /tmp/
+        run: ls -la frontend-image/
 
       - name: Stop old container
         uses: appleboy/ssh-action@v1.0.3
@@ -293,9 +293,9 @@ jobs:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
-          source: "/tmp/frontend-image/frontend-image.tar.gz"
+          source: "frontend-image/frontend-image.tar.gz"
           target: /tmp
-          strip_components: 2
+          strip_components: 1
 
       - name: Load and start container
         uses: appleboy/ssh-action@v1.0.3
