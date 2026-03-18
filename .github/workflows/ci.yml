@@ -272,10 +272,21 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-image
-          path: .
+          path: image
 
-      - name: Check artifact
-        run: ls -la frontend-image/
+      - name: List files
+        run: |
+          echo "=== Current directory ==="
+          pwd
+          echo "=== Files in image/ ==="
+          ls -la image/
+          echo "=== File size ==="
+          du -h image/*
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
 
       - name: Stop old container
         uses: appleboy/ssh-action@v1.0.3
@@ -288,14 +299,10 @@ jobs:
             docker compose stop frontend || true
 
       - name: Copy image to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.ALIYUN_HOST }}
-          username: ${{ secrets.ALIYUN_USER }}
-          password: ${{ secrets.ALIYUN_PASSWORD }}
-          source: "frontend-image/frontend-image.tar.gz"
-          target: /tmp
-          strip_components: 1
+        run: |
+          # 使用 sshpass + scp 传输
+          sudo apt-get install -y sshpass
+          sshpass -p '${{ secrets.ALIYUN_PASSWORD }}' scp -o StrictHostKeyChecking=no image/frontend-image.tar.gz ${{ secrets.ALIYUN_USER }}@${{ secrets.ALIYUN_HOST }}:/tmp/
 
       - name: Load and start container
         uses: appleboy/ssh-action@v1.0.3
