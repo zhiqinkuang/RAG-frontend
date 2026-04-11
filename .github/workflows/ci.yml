@@ -269,7 +269,7 @@ jobs:
         continue-on-error: true
 
   # ============================================
-  # Deploy to Production
+  # Deploy to Production (SCP-based, avoids slow GHCR pull from China)
   # ============================================
   deploy:
     name: Deploy to Production
@@ -280,53 +280,65 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.deploy == 'true')
     environment: production
     steps:
-      - name: Deploy via SSH
+      - name: Export Docker image
+        run: |
+          IMAGE="${{ needs.docker.outputs.image_full }}"
+          echo "Pulling $IMAGE from GHCR (fast within GitHub network)..."
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker pull "$IMAGE"
+          echo "Saving image to tar.gz..."
+          docker save "$IMAGE" | gzip > /tmp/frontend-image.tar.gz
+          ls -lh /tmp/frontend-image.tar.gz
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ALIYUN_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p ${{ secrets.ALIYUN_PORT || 22 }} ${{ secrets.ALIYUN_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Transfer image via SCP
+        run: |
+          scp -P ${{ secrets.ALIYUN_PORT || 22 }} -i ~/.ssh/deploy_key \
+            /tmp/frontend-image.tar.gz \
+            ${{ secrets.ALIYUN_USER }}@${{ secrets.ALIYUN_HOST }}:/tmp/frontend-image.tar.gz
+
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.ALIYUN_HOST }}
           username: ${{ secrets.ALIYUN_USER }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           port: ${{ secrets.ALIYUN_PORT || 22 }}
-          command_timeout: 20m
+          command_timeout: 10m
           script: |
             set -e
 
-            # Configuration
             IMAGE="${{ needs.docker.outputs.image_full }}"
             CONTAINER="rag-frontend"
 
             echo "=== Deploying Frontend ==="
             echo "Image: $IMAGE"
-            echo "Container: $CONTAINER"
 
             cd /opt/rag
 
-            # Login to GHCR
-            echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            echo "Loading image from tarball..."
+            docker load < /tmp/frontend-image.tar.gz
+            rm -f /tmp/frontend-image.tar.gz
 
-            # Pull new image
-            echo "Pulling image..."
-            docker pull $IMAGE
-
-            # Stop old container (keep for rollback)
-            echo "Stopping old container..."
             docker compose stop frontend || true
             docker rename $CONTAINER ${CONTAINER}-backup-$(date +%s) || true
 
-            # Update docker-compose.yml image tag
             sed -i "s|image: ghcr.io/${{ github.repository_owner }}/rag-frontend:.*|image: $IMAGE|" docker-compose.yml || true
 
-            # Ensure .env has ARK_API_KEY and RAG config
             if [ ! -f .env ]; then
               echo "ARK_API_KEY=${{ secrets.ARK_API_KEY }}" > .env
               echo "RAG_CHAT_MODEL=${{ secrets.RAG_CHAT_MODEL }}" >> .env
             fi
 
-            # Start new container
             echo "Starting new container..."
             docker compose up -d frontend --no-deps
 
-            # Wait for health check
             echo "Waiting for health check..."
             sleep 15
             for i in {1..6}; do
@@ -345,15 +357,15 @@ jobs:
               sleep 5
             done
 
-            # Cleanup old backup containers (keep last 2)
-            echo "Cleaning up old backups..."
             docker ps -a --filter "name=${CONTAINER}-backup" --format "{{.Names}}" | \
               sort -r | tail -n +3 | xargs -r docker rm -f
-
-            # Prune unused images
             docker image prune -f
 
             echo "=== Deployment Complete ==="
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
 
       - name: External health check
         run: |
