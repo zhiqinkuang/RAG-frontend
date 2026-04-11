@@ -9,9 +9,30 @@ import {
   ZoomOut,
   AlertCircle,
   Loader2,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStoredRagToken } from "@/lib/rag-auth";
+
+const PREVIEWABLE_EXTENSIONS = new Set([
+  ".pdf",
+  ".txt",
+  ".md",
+  ".csv",
+  ".html",
+  ".htm",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".svg",
+]);
+
+function getExtension(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.slice(dot).toLowerCase() : "";
+}
 
 function PreviewContent() {
   const searchParams = useSearchParams();
@@ -22,6 +43,10 @@ function PreviewContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const [unsupported, setUnsupported] = useState(false);
+
+  const ext = getExtension(fileName);
+  const canPreviewByExt = PREVIEWABLE_EXTENSIONS.has(ext);
 
   useEffect(() => {
     if (!docId) {
@@ -35,24 +60,25 @@ function PreviewContent() {
       return;
     }
 
-    const proxyUrl = `/api/preview?docId=${encodeURIComponent(docId)}&token=${encodeURIComponent(token)}`;
+    if (!canPreviewByExt) {
+      setUnsupported(true);
+      setIsLoading(false);
+      return;
+    }
 
+    const proxyUrl = `/api/preview?docId=${encodeURIComponent(docId)}&token=${encodeURIComponent(token)}`;
     setError(null);
     setIsLoading(true);
-    fetch(proxyUrl, { method: "HEAD" })
-      .then((res) => {
-        if (!res.ok) {
-          if (res.status === 404) setError("文档不存在或已被删除");
-          else if (res.status === 401) setError("认证已过期，请重新登录");
-          else setError(`加载失败: ${res.status}`);
-        } else {
-          setIframeSrc(proxyUrl);
-        }
-      })
-      .catch(() => {
-        setError("网络错误，请检查连接");
+    setIframeSrc(proxyUrl);
+
+    const timeout = setTimeout(() => {
+      setIsLoading((prev) => {
+        if (prev) setError("加载超时，请检查网络或稍后重试");
+        return false;
       });
-  }, [docId]);
+    }, 30000);
+    return () => clearTimeout(timeout);
+  }, [docId, canPreviewByExt]);
 
   if (!docId) {
     return (
@@ -76,6 +102,29 @@ function PreviewContent() {
         <Button variant="outline" onClick={() => window.close()}>
           关闭
         </Button>
+      </div>
+    );
+  }
+
+  if (unsupported) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-4">
+        <FileText className="h-16 w-16 text-muted-foreground" />
+        <p className="font-medium text-lg">{fileName}</p>
+        <p className="text-muted-foreground text-sm">
+          该文件类型（{ext || "未知"}）不支持在线预览，请下载后查看
+        </p>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => window.close()}>
+            关闭
+          </Button>
+          <Button asChild>
+            <a href={downloadUrl} download={fileName}>
+              <Download className="mr-1 h-4 w-4" />
+              下载文件
+            </a>
+          </Button>
+        </div>
       </div>
     );
   }

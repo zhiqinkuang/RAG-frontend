@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, MessagesSquare, User, BookOpen } from "lucide-react";
+import { LogIn, LogOut, MessagesSquare, User, BookOpen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -179,6 +179,19 @@ export function ThreadListSidebar({
             </span>
             <div className="flex gap-1">
               <SettingsDialog />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0"
+                onClick={() => {
+                  clearStoredRagAuth();
+                  clearAllChatData();
+                  window.location.href = "/login";
+                }}
+                aria-label={t.login}
+              >
+                <LogIn className="size-4" />
+              </Button>
             </div>
           </div>
         )}

@@ -86,20 +86,20 @@ class CustomChatTransport extends AssistantChatTransport<UIMessage> {
     const next: Record<string, unknown> = {
       ...body,
       provider: settings.provider,
-      apiKey: settings.apiKey,
-      baseURL: settings.baseURL || undefined,
-      model: settings.model,
     };
-    if (
-      settings.provider === "rag" &&
-      settings.knowledgeBaseId != null &&
-      settings.knowledgeBaseId > 0
-    ) {
-      next.knowledgeBaseId = settings.knowledgeBaseId;
-      // 添加选中的文档 ID
-      const selectedDocIds = this.getSelectedDocIds();
-      if (selectedDocIds.length > 0) {
-        next.selectedDocIds = selectedDocIds;
+    if (settings.provider === "rag") {
+      if (settings.apiKey) {
+        next.apiKey = settings.apiKey;
+      }
+      if (
+        settings.knowledgeBaseId != null &&
+        settings.knowledgeBaseId > 0
+      ) {
+        next.knowledgeBaseId = settings.knowledgeBaseId;
+        const selectedDocIds = this.getSelectedDocIds();
+        if (selectedDocIds.length > 0) {
+          next.selectedDocIds = selectedDocIds;
+        }
       }
     }
     return { ...options, body: next };
@@ -330,7 +330,7 @@ export const Assistant = () => {
   const [displayModel, setDisplayModel] = useState(() => {
     const s = getSettings();
     const prov = getProvider(s.provider);
-    return s.model || prov.defaultModel || t.notConfigured;
+    return prov.name || t.notConfigured;
   });
 
   // 加载知识库列表
@@ -351,7 +351,6 @@ export const Assistant = () => {
   const refreshDisplayModel = useCallback(() => {
     const s = getSettings();
     const prov = getProvider(s.provider);
-    // RAG 模式显示 "知识库 · 知识库名称"，其他模式显示模型名称
     if (s.provider === "rag") {
       const kbName = s.knowledgeBaseId
         ? knowledgeBases.find((kb) => kb.ID === s.knowledgeBaseId)?.name
@@ -362,7 +361,7 @@ export const Assistant = () => {
         setDisplayModel(t.knowledgeBase || "知识库");
       }
     } else {
-      setDisplayModel(s.model || prov.defaultModel || t.notConfigured);
+      setDisplayModel(prov.name || t.notConfigured);
     }
   }, [getSettings, t.notConfigured, t.knowledgeBase, knowledgeBases]);
 

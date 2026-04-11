@@ -8,11 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { ragLogin, setStoredRagAuth } from "@/lib/rag-auth";
-import { getProvider } from "@/lib/providers";
+
 import { validateEmail } from "@/lib/validation";
 import { getRagBackendUrl } from "@/lib/config";
 
 const STORAGE_KEY = "chat-settings";
+
+/** 仅允许站内相对路径，防止开放重定向 */
+function getSafeRedirectFromUrl(): string {
+  if (typeof window === "undefined") return "/";
+  try {
+    const r = new URLSearchParams(window.location.search).get("redirect");
+    if (!r || !r.startsWith("/") || r.startsWith("//")) return "/";
+    return r;
+  } catch {
+    return "/";
+  }
+}
 
 /** 防暴力破解：登录失败后禁用时间（毫秒） */
 const LOCKOUT_DURATION = 3000;
@@ -89,17 +101,15 @@ export default function LoginPage() {
         email.trim().toLowerCase(),
         password,
       );
-      setStoredRagAuth(res.token, res.user);
+      setStoredRagAuth(res.token, res.user, res.expire);
       const settings = {
         provider: "rag",
         apiKey: res.token,
-        baseURL: ragBackendUrl,
-        model: getProvider("rag").defaultModel,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      // 触发自定义事件通知其他组件更新
       window.dispatchEvent(new CustomEvent("rag-auth-changed"));
-      router.push("/");
+      const redirect = getSafeRedirectFromUrl();
+      router.push(redirect);
       router.refresh();
     } catch (err) {
       // 登录失败，触发防暴力破解锁定

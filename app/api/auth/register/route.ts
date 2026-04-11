@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getRagBackendUrl } from "@/lib/config";
 import {
   validateEmail,
   validatePassword,
@@ -10,8 +11,15 @@ import {
 const MAX_BODY_SIZE = 1024 * 1024;
 
 /** 统一错误响应格式 */
-function errorResponse(message: string, status: number = 400) {
-  return NextResponse.json({ error: message }, { status });
+function errorResponse(
+  message: string,
+  status: number = 400,
+  extra?: Record<string, unknown>,
+) {
+  return NextResponse.json(
+    { error: message, ...(extra ?? {}) },
+    { status },
+  );
 }
 
 /**
@@ -63,18 +71,17 @@ function logRequest(
   );
 }
 
-/** 获取 RAG 后端 URL（优先服务端环境变量） */
-function getRagBackendUrl(clientBaseURL?: string): string {
-  // 优先使用服务端环境变量（生产部署）
-  if (process.env.RAG_API_URL) {
-    return process.env.RAG_API_URL.replace(/\/$/, "");
+/** 从后端 JSON 中提取可展示的错误文案（不含敏感信息） */
+function readBackendErrorMessage(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const o = data as Record<string, unknown>;
+  for (const key of ["message", "msg", "error", "detail"]) {
+    const v = o[key];
+    if (typeof v === "string" && v.length > 0 && v.length < 200 && !/[<>]/.test(v)) {
+      return v;
+    }
   }
-  // 其次使用客户端传入的 baseURL（本地开发）
-  if (clientBaseURL) {
-    return clientBaseURL.replace(/\/$/, "");
-  }
-  // 默认本地开发地址
-  return "http://127.0.0.1:8080";
+  return null;
 }
 
 /** 代理到 RAG 后端 POST /api/v1/auth/register */
@@ -139,10 +146,12 @@ export async function POST(req: NextRequest) {
       return errorResponse(passwordResult.errors[0] || "密码不符合要求", 400);
     }
 
+    const registerUrl = `${base}/api/v1/auth/register`;
+
     // 调用后端 API
     let res: Response;
     try {
-      res = await fetch(`${base}/api/v1/auth/register`, {
+      res = await fetch(registerUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -179,27 +188,53 @@ export async function POST(req: NextRequest) {
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      const backendHint = readBackendErrorMessage(data);
+      const baseSource = process.env.RAG_API_URL
+        ? "RAG_API_URL"
+        : process.env.NEXT_PUBLIC_RAG_API_URL
+          ? "NEXT_PUBLIC_RAG_API_URL"
+          : "body.baseURL|default";
+      console.log(
+        `[REGISTER] backend HTTP ${res.status} base=${baseSource} → ${registerUrl}${backendHint ? ` — ${backendHint}` : ""}`,
+      );
       logRequest("REGISTER", {
         username: sanitizedUsername,
         email: sanitizedEmail,
         ip: clientIP,
         success: false,
       });
-      // 根据状态码返回具体的中文错误
       if (res.status === 409) {
         return errorResponse("用户名或邮箱已被注册", 409);
       }
       if (res.status === 429) {
         return errorResponse("注册请求过于频繁，请稍后重试", 429);
       }
+      if (res.status === 404) {
+        return errorResponse(
+          "后端对该地址返回 404（无注册路由）。请核对：1) 下方 attemptedUrl 是否与你用 curl 测试的地址一致；2) 若部署时设置了 RAG_API_URL，它优先于页面里的 Base URL，需指向已实现 POST /api/v1/auth/register 的实例。",
+          502,
+          { attemptedUrl: registerUrl },
+        );
+      }
       if (res.status >= 500) {
         return errorResponse("服务器错误，请稍后重试", 500);
       }
-      return errorResponse("注册失败，请检查信息后重试", 400);
+      if (backendHint) {
+        return errorResponse(backendHint, 400);
+      }
+      return errorResponse(
+        `注册失败（后端返回 ${res.status}），请检查邮箱/用户名是否已存在或联系管理员`,
+        400,
+      );
     }
 
-    const code = (data as { code?: number }).code;
-    if (code !== 0) {
+    const raw = data as {
+      code?: number;
+      data?: unknown;
+      [key: string]: unknown;
+    };
+    // 仅当后端显式返回 code 时才校验；缺省 code 时视为成功（兼容仅 HTTP 状态 + 裸 JSON 的 API）
+    if (typeof raw.code === "number" && raw.code !== 0) {
       logRequest("REGISTER", {
         username: sanitizedUsername,
         email: sanitizedEmail,
@@ -215,7 +250,17 @@ export async function POST(req: NextRequest) {
       ip: clientIP,
       success: true,
     });
-    return NextResponse.json((data as { data?: unknown }).data ?? {});
+    // 优先 data；否则若带 code 信封则去掉 code 后返回其余字段（如 { code:0, user_id }）
+    let payload: object;
+    if (raw.data !== undefined && raw.data !== null) {
+      payload = raw.data as object;
+    } else if (typeof raw.code === "number") {
+      const { code: _c, ...rest } = raw;
+      payload = rest as object;
+    } else {
+      payload = (data ?? {}) as object;
+    }
+    return NextResponse.json(payload);
   } catch (e) {
     // 不暴露内部错误详情
     console.error(

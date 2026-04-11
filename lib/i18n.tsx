@@ -19,7 +19,15 @@ const translations = {
     apiKeyConfigured: "API Key 已配置",
     apiKeyRequired: "请配置 API Key 以使用对话功能",
     apiKeyOptional: "API Key 可选（取决于你的后端是否需要鉴权）",
+    showApiKeyAria: "显示 API Key",
+    hideApiKeyAria: "隐藏 API Key",
+    showModelIdAria: "显示模型或接入点 ID",
+    hideModelIdAria: "隐藏模型或接入点 ID",
     customApiHint: "填写完整的 API 地址，后端需返回 UI Message Stream SSE 格式",
+    chatMode: "对话模式",
+    doubaoModeActive: "当前使用豆包对话模式，由服务端提供 AI 能力",
+    ragModeActive: "当前使用 RAG 知识库问答模式",
+    ragLoginRequired: "请先登录 RAG 账号以使用知识库问答功能",
     cancel: "取消",
     save: "保存设置",
     saved: "已保存",
@@ -77,6 +85,10 @@ const translations = {
     knowledgeBaseId: "知识库 ID",
     knowledgeBaseIdPlaceholder: "可选，留空则不指定",
     ragApiHint: "Base URL 为 RAG 后端地址；API Key 为登录后获得的 Token。",
+    ragModelHint:
+      "与 Base URL（如 http://127.0.0.1:8080）无关：这里只填「上游大模型的 model 标识」。请查看 RAG 后端 README/配置说明，或问后端开发者应填什么。",
+    ragModelPlaceholder:
+      "例如 gpt-4o-mini、或后端文档中的 model / 接入点 ID",
     // Auth (RAG)
     login: "登录",
     register: "注册",
@@ -179,8 +191,16 @@ const translations = {
     apiKeyConfigured: "API Key configured",
     apiKeyRequired: "Configure API Key to use chat",
     apiKeyOptional: "API Key is optional (depends on your backend auth)",
+    showApiKeyAria: "Show API Key",
+    hideApiKeyAria: "Hide API Key",
+    showModelIdAria: "Show model or endpoint ID",
+    hideModelIdAria: "Hide model or endpoint ID",
     customApiHint:
       "Enter full API URL. Backend must return UI Message Stream SSE format.",
+    chatMode: "Chat Mode",
+    doubaoModeActive: "Using Doubao AI chat mode, powered by server",
+    ragModeActive: "Using RAG knowledge base Q&A mode",
+    ragLoginRequired: "Please login to your RAG account to use knowledge base Q&A",
     cancel: "Cancel",
     save: "Save",
     saved: "Saved",
@@ -239,6 +259,10 @@ const translations = {
     knowledgeBaseIdPlaceholder: "Optional, leave empty to not specify",
     ragApiHint:
       "Base URL is your RAG backend; API Key is the token from login.",
+    ragModelHint:
+      "Not your RAG Base URL: only the upstream LLM `model` id. Check your RAG backend docs or ask the backend maintainer what to enter.",
+    ragModelPlaceholder:
+      "e.g. gpt-4o-mini, or model / endpoint id from backend docs",
     // Auth (RAG)
     login: "Login",
     register: "Register",

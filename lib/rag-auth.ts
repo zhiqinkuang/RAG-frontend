@@ -114,6 +114,7 @@ export function setStoredRagAuth(
   if (expire) {
     localStorage.setItem(RAG_TOKEN_EXPIRE_KEY, expire);
   }
+  document.cookie = "rag-auth=1; path=/; SameSite=Lax";
 }
 
 /**
@@ -124,6 +125,7 @@ export function clearStoredRagAuth(): void {
   localStorage.removeItem(RAG_TOKEN_KEY);
   localStorage.removeItem(RAG_USER_KEY);
   localStorage.removeItem(RAG_TOKEN_EXPIRE_KEY);
+  document.cookie = "rag-auth=; path=/; max-age=0; SameSite=Lax";
 }
 
 /**
@@ -365,7 +367,12 @@ export async function ragRegister(
     });
     const data = await res.json();
     if (!res.ok) {
-      throw new Error((data as { error?: string }).error ?? "Register failed");
+      const body = data as { error?: string; attemptedUrl?: string };
+      let msg = body.error ?? "Register failed";
+      if (body.attemptedUrl) {
+        msg = `${msg} — ${body.attemptedUrl}`;
+      }
+      throw new Error(msg);
     }
     return data as RegisterResponse;
   } catch (error) {

@@ -13,7 +13,11 @@
     "format:fix": "biome format --write .",
     "test": "echo 'No unit tests configured'",
     "test:e2e": "playwright test",
-    "test:e2e:ci": "playwright test tests/e2e/smoke.spec.ts"
+    "test:e2e:ci": "playwright test tests/e2e/smoke.spec.ts",
+    "docker:build": "docker build --platform linux/amd64 -t webchat-frontend:latest -f Dockerfile .",
+    "docker:save": "docker save webchat-frontend:latest -o webchat-frontend-amd64.tar",
+    "docker:save:gz": "docker save webchat-frontend:latest | gzip > webchat-frontend-amd64.tar.gz",
+    "docker:export": "pnpm run docker:build && pnpm run docker:save:gz"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.26",

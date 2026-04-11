@@ -15,9 +15,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # 写入 next.config rewrites：容器内访问「宿主机上的 8080」用 host.docker.internal；
+        # 若前端与 rag-api 在同一 compose 且服务名为 rag-api，改为 http://rag-api:8080
+        RAG_API_PROXY_TARGET: ${RAG_API_PROXY_TARGET:-http://host.docker.internal:8080}
+        # 留空：浏览器请求同源 /api/v1/*，由 Next 服务端转发到 RAG_API_PROXY_TARGET（免 CORS）
+        NEXT_PUBLIC_RAG_API_URL: ${NEXT_PUBLIC_RAG_API_URL:-}
     image: webchat-frontend:latest
     container_name: webchat-frontend
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "3000:3000"
     environment:

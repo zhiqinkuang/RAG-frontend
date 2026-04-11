@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Dependencies
 # ============================================
-FROM node:20-alpine AS deps
+FROM ccfb9f0dc7ac AS deps
 WORKDIR /app
 
 # Install pnpm
@@ -16,7 +16,7 @@ RUN pnpm install --frozen-lockfile --prefer-offline
 # ============================================
 # Stage 2: Builder
 # ============================================
-FROM node:20-alpine AS builder
+FROM ccfb9f0dc7ac AS builder
 WORKDIR /app
 
 # Install pnpm
@@ -33,18 +33,10 @@ RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# 浏览器侧 API 基址：留空则走「当前域名 + rewrites」到 RAG_API_PROXY_TARGET（推荐 Docker）
-# 若设为 http://localhost:8080 则浏览器直连后端（需后端 CORS 放行）
+# Build argument for RAG API URL (set during docker build)
+# Empty string means use relative path (proxied by nginx)
 ARG NEXT_PUBLIC_RAG_API_URL=
 ENV NEXT_PUBLIC_RAG_API_URL=$NEXT_PUBLIC_RAG_API_URL
-
-# 为 true 时构建进包：强制 RAG 登录；留空则允许仅用 API Key / 服务端密钥对话
-ARG NEXT_PUBLIC_REQUIRE_RAG_LOGIN=
-ENV NEXT_PUBLIC_REQUIRE_RAG_LOGIN=$NEXT_PUBLIC_REQUIRE_RAG_LOGIN
-
-# build 时写入 rewrites 目标：宿主机上的 rag-api 用 host.docker.internal；compose 同事物网络用 http://rag-api:8080
-ARG RAG_API_PROXY_TARGET=http://host.docker.internal:8080
-ENV RAG_API_PROXY_TARGET=$RAG_API_PROXY_TARGET
 
 # Build the application
 RUN pnpm build
@@ -52,7 +44,7 @@ RUN pnpm build
 # ============================================
 # Stage 3: Runner (Production)
 # ============================================
-FROM node:20-alpine AS runner
+FROM ccfb9f0dc7ac AS runner
 WORKDIR /app
 
 # Install wget for health check
@@ -67,10 +59,6 @@ ENV HOSTNAME="0.0.0.0"
 # Runtime environment variable for RAG API URL (can be overridden at runtime)
 ARG RAG_API_URL=http://host.docker.internal:8080
 ENV RAG_API_URL=$RAG_API_URL
-
-# RAG 对话默认 model（与后端/上游厂商约定一致）；不填则依赖用户在设置里填写
-ARG RAG_CHAT_MODEL=
-ENV RAG_CHAT_MODEL=$RAG_CHAT_MODEL
 
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \

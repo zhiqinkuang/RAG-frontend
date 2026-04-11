@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { streamText, convertToModelMessages, type UIMessage } from "ai";
 import { MockLanguageModelV3, simulateReadableStream } from "ai/test";
+import { getRagBackendUrl, resolveRagInferenceModel } from "@/lib/config";
 import { getProvider, type ProviderId } from "@/lib/providers";
 
 const MOCK_CHAT = process.env.MOCK_CHAT === "true";
@@ -500,9 +501,14 @@ export async function POST(req: Request) {
     const provider = (providerId ?? "doubao") as ProviderId;
     const prov = getProvider(provider);
     const effectiveApiKey =
-      apiKey ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
+      provider === "rag"
+        ? (apiKey || "")
+        : (process.env.ARK_API_KEY || process.env.OPENAI_API_KEY || "");
     const effectiveBaseURL = requestBaseURL || prov.baseURL;
-    const effectiveModel = model || prov.defaultModel;
+    const effectiveModel =
+      provider === "rag"
+        ? (resolveRagInferenceModel(model) ?? "")
+        : (process.env.DOUBAO_CHAT_MODEL || prov.defaultModel);
 
     if (MOCK_CHAT) {
       const lastUser = [...messages].reverse().find((m) => m.role === "user") as
@@ -540,7 +546,10 @@ export async function POST(req: Request) {
 
     // RAG 知识库：调用后端 POST /api/chat（UI Message Stream 格式）
     if (provider === "rag") {
-      const base = effectiveBaseURL?.replace(/\/$/, "") ?? "";
+      const base = (effectiveBaseURL || getRagBackendUrl()).replace(
+        /\/$/,
+        "",
+      );
       if (!base) {
         return jsonErrorResponse("请填写 RAG 后端地址 (Base URL)", 400);
       }
@@ -574,6 +583,13 @@ export async function POST(req: Request) {
         return jsonErrorResponse("您还没有知识库，请先在设置中创建知识库", 400);
       }
 
+      if (!effectiveModel) {
+        return jsonErrorResponse(
+          "未配置对话模型：请在「设置 → API」中填写 model（取值须与你的 RAG 后端及上游大模型服务一致，见该后端文档或厂商控制台），或在服务器设置环境变量 RAG_CHAT_MODEL。",
+          400,
+        );
+      }
+
       const apiURL = `${base}/api/chat`;
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -582,7 +598,7 @@ export async function POST(req: Request) {
         headers["Authorization"] = `Bearer ${effectiveApiKey}`;
       }
       const body: Record<string, unknown> = {
-        model: effectiveModel || "ep-20260303160518-fzrwg",
+        model: effectiveModel,
         messages: toRagMessages(messages),
         knowledge_base_id: kbId,
         document_ids: selectedDocIds || [],
@@ -642,52 +658,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 自定义 API 模式：直接转发，后端返回 UI Message Stream 格式
-    if (provider === "custom-api") {
-      const apiURL = effectiveBaseURL;
-      if (!apiURL) {
-        return jsonErrorResponse("请填写自定义 API 地址", 400);
-      }
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (effectiveApiKey) {
-        headers["Authorization"] = `Bearer ${effectiveApiKey}`;
-      }
-      const body: Record<string, unknown> = { messages };
-      if (system) body.system = system;
-      if (effectiveModel) body.model = effectiveModel;
-
-      const apiResponse = await fetch(apiURL, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(body),
-      });
-
-      if (!apiResponse.ok) {
-        const errorText = await apiResponse.text().catch(() => "Unknown error");
-        return new Response(
-          JSON.stringify({
-            error: errorText || `Custom API error: ${apiResponse.status}`,
-          }),
-          {
-            status: apiResponse.status,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      return new Response(ensureReadableStream(apiResponse.body), {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-          "x-vercel-ai-ui-message-stream": "v1",
-        },
-      });
-    }
-
-    // OpenAI 兼容 API
+    // OpenAI 兼容 API（豆包等）
     const chatResponse = await streamChat(
       effectiveBaseURL,
       effectiveApiKey || "",

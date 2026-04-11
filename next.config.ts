@@ -1,10 +1,25 @@
 import type { NextConfig } from "next";
 
+/** 服务端把浏览器同源的 /api/v1 转到 RAG 后端（避免 NEXT_PUBLIC 为空时打到 3000 却 404） */
+const ragProxyTarget =
+  process.env.RAG_API_PROXY_TARGET?.replace(/\/$/, "") ||
+  "http://127.0.0.1:8080";
+
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
   output: "standalone",
 
   devIndicators: false,
+
+  async rewrites() {
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${ragProxyTarget}/api/v1/:path*`,
+      },
+    ];
+  },
+
   async headers() {
     const defaultSecurityHeaders = [
       {
@@ -98,7 +113,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "",
+            value: "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; object-src 'self'; frame-ancestors 'self'",
           },
         ],
       },

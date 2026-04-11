@@ -4,15 +4,14 @@ import * as React from "react";
 import { useState, useEffect } from "react";
 import {
   Settings,
-  Key,
   Check,
-  AlertCircle,
   Sun,
   Moon,
   Monitor,
   Globe,
   User,
   Database,
+  MessageSquare,
 } from "lucide-react";
 import {
   Dialog,
@@ -30,13 +29,9 @@ import { useTheme, type Theme } from "@/lib/theme";
 import {
   getStoredRagUser,
   getStoredRagToken,
-  setStoredRagAuth,
   clearStoredRagAuth,
   clearAllChatData,
-  ragLogin,
-  ragRegister,
 } from "@/lib/rag-auth";
-import { getRagBackendUrl } from "@/lib/config";
 import { RagSettings } from "@/components/rag-settings";
 
 export interface ApiKeySettings {
@@ -44,9 +39,7 @@ export interface ApiKeySettings {
   apiKey: string;
   baseURL: string;
   model: string;
-  /** RAG 知识库 ID，仅当 provider 为 rag 时使用 */
   knowledgeBaseId?: number;
-  /** 本地下载地址，用于论文备份 */
   localDownloadPath?: string;
 }
 
@@ -56,11 +49,11 @@ const defaultSettings: ApiKeySettings = {
   provider: "doubao",
   apiKey: "",
   baseURL: "",
-  model: "doubao-seed-2-0-lite-260215",
+  model: "",
   localDownloadPath: "",
 };
 
-type Tab = "general" | "api" | "rag";
+type Tab = "general" | "mode" | "rag";
 
 interface SettingsDialogProps {
   onSaved?: () => void;
@@ -71,71 +64,14 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("api");
+  const [tab, setTab] = useState<Tab>("mode");
   const [settings, setSettings] = useState<ApiKeySettings>(defaultSettings);
   const [saved, setSaved] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const [authError, setAuthError] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
   const [ragUser, setRagUser] =
     useState<ReturnType<typeof getStoredRagUser>>(null);
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authUsername, setAuthUsername] = useState("");
-
-  const handleRagLogin = async () => {
-    setAuthError("");
-    setAuthLoading(true);
-    try {
-      const res = await ragLogin(
-        settings.baseURL.trim() || getRagBackendUrl(),
-        authEmail.trim(),
-        authPassword,
-      );
-      setStoredRagAuth(res.token, res.user);
-      setRagUser(res.user);
-      setSettings((prev) => ({ ...prev, apiKey: res.token }));
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ ...settings, apiKey: res.token }),
-      );
-      // 触发自定义事件通知其他组件更新
-      window.dispatchEvent(new CustomEvent("rag-auth-changed"));
-      onSaved?.();
-    } catch (e) {
-      setAuthError(e instanceof Error ? e.message : "Login failed");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleRagRegister = async () => {
-    if (authPassword.length < 6) {
-      setAuthError(t.passwordMinLength);
-      return;
-    }
-    setAuthError("");
-    setAuthLoading(true);
-    try {
-      await ragRegister(
-        settings.baseURL.trim() || getRagBackendUrl(),
-        authUsername.trim(),
-        authEmail.trim(),
-        authPassword,
-      );
-      setAuthMode("login");
-      setAuthUsername("");
-      setAuthError("注册成功，请登录");
-    } catch (e) {
-      setAuthError(e instanceof Error ? e.message : "Register failed");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
 
   const handleRagLogout = () => {
     clearStoredRagAuth();
-    // 清除所有聊天缓存数据，防止新用户看到上一个用户的聊天记录
     clearAllChatData();
     setRagUser(null);
     setSettings((prev) => ({ ...prev, apiKey: "" }));
@@ -143,9 +79,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
       STORAGE_KEY,
       JSON.stringify({ ...settings, apiKey: "" }),
     );
-    // 触发自定义事件通知其他组件更新
     window.dispatchEvent(new CustomEvent("rag-auth-changed"));
-    onSaved?.();
+    window.location.href = "/login";
   };
 
   React.useEffect(() => setMounted(true), []);
@@ -161,14 +96,16 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as Partial<ApiKeySettings>;
-        const provider = (parsed.provider ??
-          defaultSettings.provider) as ProviderId;
+        let provider = (parsed.provider ?? defaultSettings.provider) as ProviderId;
+        if (provider !== "doubao" && provider !== "rag") {
+          provider = "doubao";
+        }
         const prov = getProvider(provider);
         setSettings({
           provider,
           apiKey: parsed.apiKey ?? "",
-          baseURL: parsed.baseURL ?? prov.baseURL,
-          model: parsed.model ?? prov.defaultModel,
+          baseURL: prov.baseURL,
+          model: prov.defaultModel,
           knowledgeBaseId: parsed.knowledgeBaseId,
           localDownloadPath: parsed.localDownloadPath ?? "",
         });
@@ -178,7 +115,6 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
     }
   }, [mounted]);
 
-  // RAG 模式下，自动同步 token
   useEffect(() => {
     if (!mounted) return;
     const token = getStoredRagToken();
@@ -195,7 +131,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
       provider,
       baseURL: prov.baseURL,
       model: prov.defaultModel,
-      apiKey: provider === "rag" ? token : prev.apiKey,
+      apiKey: provider === "rag" ? token : "",
       knowledgeBaseId:
         provider === "rag" ? (prev.knowledgeBaseId ?? undefined) : undefined,
     }));
@@ -204,7 +140,6 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
   const handleSave = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     setSaved(true);
-    // 触发自定义事件通知其他组件设置已更新
     window.dispatchEvent(new CustomEvent("settings-changed"));
     onSaved?.();
     setTimeout(() => {
@@ -213,12 +148,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
     }, 1200);
   };
 
-  const currentProvider = getProvider(settings.provider);
-  const hasApiKey = settings.apiKey.length > 0;
-  const isCustomApi = settings.provider === "custom-api";
   const isRag = settings.provider === "rag";
-  // 只有 custom 和 custom-api 需要显示 Base URL 输入框
-  const showBaseURLInput = settings.provider === "custom" || isCustomApi;
 
   if (!mounted) {
     return (
@@ -229,7 +159,11 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
   }
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "api", label: t.settingsApi, icon: <Key className="size-3.5" /> },
+    {
+      id: "mode",
+      label: t.chatMode,
+      icon: <MessageSquare className="size-3.5" />,
+    },
     {
       id: "rag",
       label: t.settingsRag,
@@ -374,298 +308,97 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
             </div>
           )}
 
-          {/* ---- API Tab ---- */}
-          {tab === "api" && (
+          {/* ---- Chat Mode Tab ---- */}
+          {tab === "mode" && (
             <div className="space-y-2.5 sm:space-y-3 md:space-y-4">
               <div className="space-y-1.5 sm:space-y-2">
                 <label className="font-medium text-xs sm:text-sm">
-                  {t.provider}
+                  {t.chatMode}
                 </label>
-                <select
-                  className="flex h-8 w-full touch-manipulation appearance-none rounded-lg border border-input bg-[length:1rem] bg-[right_0.75rem_center] bg-[url('data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2716%27%20height%3D%2716%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%236b7280%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpath%20d%3D%27m6%209%206%206%206-6%27%2F%3E%3C%2Fsvg%3E')] bg-background bg-no-repeat py-1.5 pr-8 pl-2.5 text-base sm:h-9 sm:py-2 sm:pr-10 sm:pl-3 sm:text-sm md:h-10"
-                  value={settings.provider}
-                  onChange={(e) =>
-                    handleProviderChange(e.target.value as ProviderId)
-                  }
-                  aria-label={t.providerAria}
-                >
+                <div className="flex gap-2">
                   {PROVIDERS.map((p) => (
-                    <option
+                    <button
                       key={p.id}
-                      value={p.id}
-                      className="text-base sm:text-sm"
+                      type="button"
+                      onClick={() => handleProviderChange(p.id)}
+                      className={`flex flex-1 flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-colors sm:p-4 ${
+                        settings.provider === p.id
+                          ? "border-primary bg-primary/5 text-foreground"
+                          : "border-input text-muted-foreground hover:bg-muted/50"
+                      }`}
                     >
-                      {p.name}
-                    </option>
+                      {p.id === "doubao" ? (
+                        <MessageSquare className="size-5 sm:size-6" />
+                      ) : (
+                        <Database className="size-5 sm:size-6" />
+                      )}
+                      <span className="font-medium text-xs sm:text-sm">
+                        {p.name}
+                      </span>
+                      <span className="text-muted-foreground text-[10px] sm:text-xs">
+                        {p.description}
+                      </span>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
-              {/* Base URL - RAG 和 custom/custom-api 模式下显示 */}
-              {(isRag || showBaseURLInput) && (
-                <div className="space-y-1.5 sm:space-y-2">
-                  <label
-                    htmlFor="baseURL"
-                    className="font-medium text-xs sm:text-sm"
-                  >
-                    {isCustomApi ? "API URL" : "Base URL"}
-                  </label>
-                  <Input
-                    id="baseURL"
-                    type="url"
-                    placeholder={currentProvider.placeholder || "https://..."}
-                    value={settings.baseURL}
-                    className="h-8 text-xs sm:h-9 sm:text-sm md:h-10"
-                    onChange={(e) =>
-                      setSettings((prev) => ({
-                        ...prev,
-                        baseURL: e.target.value,
-                      }))
-                    }
-                  />
-                  {isRag && (
-                    <p className="text-muted-foreground text-xs">
-                      RAG 后端服务地址
-                    </p>
-                  )}
-                  {isCustomApi && (
-                    <p className="text-muted-foreground text-xs">
-                      {t.customApiHint}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* API Key - RAG 模式不显示，其他模式显示 */}
-              {!isRag && (
-                <div className="space-y-1.5 sm:space-y-2">
-                  <label
-                    htmlFor="apiKey"
-                    className="font-medium text-xs sm:text-sm"
-                  >
-                    {t.apiKey}
-                  </label>
-                  <Input
-                    id="apiKey"
-                    type="password"
-                    placeholder={t.apiKeyPlaceholder}
-                    value={settings.apiKey}
-                    className="h-8 text-xs sm:h-9 sm:text-sm md:h-10"
-                    onChange={(e) =>
-                      setSettings((prev) => ({
-                        ...prev,
-                        apiKey: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              )}
-
-              {/* Model */}
-              <div className="space-y-1.5 sm:space-y-2">
-                <label
-                  htmlFor="model"
-                  className="font-medium text-xs sm:text-sm"
-                >
-                  {t.model}
-                </label>
-                <Input
-                  id="model"
-                  type="password"
-                  placeholder={currentProvider.placeholder}
-                  value={settings.model}
-                  className="h-8 text-xs sm:h-9 sm:text-sm md:h-10"
-                  onChange={(e) =>
-                    setSettings((prev) => ({ ...prev, model: e.target.value }))
-                  }
-                />
+              {/* Current mode status */}
+              <div className="flex items-center gap-1.5 rounded-lg border p-2 sm:gap-2 sm:p-2.5 md:p-3">
+                <Check className="size-3.5 shrink-0 text-green-500 sm:size-4" />
+                <span className="text-green-600 text-xs sm:text-sm dark:text-green-400">
+                  {isRag ? t.ragModeActive : t.doubaoModeActive}
+                </span>
               </div>
 
-              {/* RAG 知识库 ID - 已隐藏，用户在论文搜索页面选择 */}
-              {/* {isRag && (
-                <div className="space-y-2">
-                  <label htmlFor="knowledgeBaseId" className="text-xs sm:text-sm font-medium">
-                    {t.knowledgeBaseId}
-                  </label>
-                  <Input
-                    id="knowledgeBaseId"
-                    type="number"
-                    min={1}
-                    placeholder={t.knowledgeBaseIdPlaceholder}
-                    value={settings.knowledgeBaseId ?? ""}
-                    className="h-9 sm:h-10 text-xs sm:text-sm"
-                    onChange={(e) => {
-                      const v = e.target.value.trim();
-                      setSettings((prev) => ({
-                        ...prev,
-                        knowledgeBaseId: v === "" ? undefined : parseInt(v, 10) || undefined,
-                      }));
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    可在"知识库"标签页管理知识库
-                  </p>
-                </div>
-              )} */}
-
-              {/* RAG 登录区域 */}
-              {isRag && (
+              {/* RAG user info (when logged in and RAG mode) */}
+              {isRag && ragUser && getStoredRagToken() && (
                 <div className="space-y-2 rounded-lg border p-2.5 sm:space-y-3 sm:p-3 md:p-4">
                   <div className="font-medium text-xs sm:text-sm">
                     {t.ragAccount}
                   </div>
-                  {ragUser && getStoredRagToken() ? (
-                    <div className="space-y-1.5 sm:space-y-2">
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted sm:size-9 md:size-10">
-                          {ragUser.avatar ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={ragUser.avatar}
-                              alt=""
-                              className="size-full object-cover"
-                            />
-                          ) : (
-                            <User className="size-3.5 text-muted-foreground sm:size-4 md:size-5" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1 text-xs sm:text-sm">
-                          <div className="font-medium">{ragUser.username}</div>
-                          <div className="truncate text-muted-foreground text-xs">
-                            {ragUser.email}
-                          </div>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-full text-xs sm:h-9 sm:text-sm"
-                        onClick={handleRagLogout}
-                      >
-                        {t.logout}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 sm:space-y-3">
-                      <div className="flex gap-1.5 sm:gap-2">
-                        <button
-                          type="button"
-                          className={`flex-1 rounded-lg border px-2 py-1 text-xs sm:px-2.5 sm:py-1.5 sm:text-sm md:px-3 ${
-                            authMode === "login"
-                              ? "border-primary bg-primary/5"
-                              : "border-input"
-                          }`}
-                          onClick={() => {
-                            setAuthMode("login");
-                            setAuthError("");
-                          }}
-                        >
-                          {t.login}
-                        </button>
-                        <button
-                          type="button"
-                          className={`flex-1 rounded-lg border px-2 py-1 text-xs sm:px-2.5 sm:py-1.5 sm:text-sm md:px-3 ${
-                            authMode === "register"
-                              ? "border-primary bg-primary/5"
-                              : "border-input"
-                          }`}
-                          onClick={() => {
-                            setAuthMode("register");
-                            setAuthError("");
-                          }}
-                        >
-                          {t.register}
-                        </button>
-                      </div>
-                      {authMode === "register" && (
-                        <div className="space-y-1 sm:space-y-1.5">
-                          <label className="text-muted-foreground text-xs">
-                            {t.username}
-                          </label>
-                          <Input
-                            type="text"
-                            placeholder={t.username}
-                            value={authUsername}
-                            className="h-8 text-xs sm:h-9 sm:text-sm"
-                            onChange={(e) => setAuthUsername(e.target.value)}
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted sm:size-9 md:size-10">
+                        {ragUser.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={ragUser.avatar}
+                            alt=""
+                            className="size-full object-cover"
                           />
+                        ) : (
+                          <User className="size-3.5 text-muted-foreground sm:size-4 md:size-5" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1 text-xs sm:text-sm">
+                        <div className="font-medium">{ragUser.username}</div>
+                        <div className="truncate text-muted-foreground text-xs">
+                          {ragUser.email}
                         </div>
-                      )}
-                      <div className="space-y-1 sm:space-y-1.5">
-                        <label className="text-muted-foreground text-xs">
-                          {t.email}
-                        </label>
-                        <Input
-                          type="email"
-                          placeholder={t.email}
-                          value={authEmail}
-                          className="h-8 text-xs sm:h-9 sm:text-sm"
-                          onChange={(e) => setAuthEmail(e.target.value)}
-                        />
                       </div>
-                      <div className="space-y-1 sm:space-y-1.5">
-                        <label className="text-muted-foreground text-xs">
-                          {t.password}
-                        </label>
-                        <Input
-                          type="password"
-                          placeholder={t.password}
-                          value={authPassword}
-                          className="h-8 text-xs sm:h-9 sm:text-sm"
-                          onChange={(e) => setAuthPassword(e.target.value)}
-                        />
-                      </div>
-                      {authError && (
-                        <p className="text-destructive text-xs">{authError}</p>
-                      )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="h-8 w-full text-xs sm:h-9 sm:text-sm"
-                        disabled={authLoading}
-                        onClick={
-                          authMode === "login"
-                            ? handleRagLogin
-                            : handleRagRegister
-                        }
-                      >
-                        {authLoading
-                          ? "..."
-                          : authMode === "login"
-                            ? t.login
-                            : t.register}
-                      </Button>
                     </div>
-                  )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-full text-xs sm:h-9 sm:text-sm"
+                      onClick={handleRagLogout}
+                    >
+                      {t.logout}
+                    </Button>
+                  </div>
                 </div>
               )}
 
-              {/* 状态提示 */}
-              <div className="flex items-center gap-1.5 rounded-lg border p-2 sm:gap-2 sm:p-2.5 md:p-3">
-                {hasApiKey ? (
-                  <>
-                    <Check className="size-3.5 shrink-0 text-green-500 sm:size-4" />
-                    <span className="text-green-600 text-xs sm:text-sm dark:text-green-400">
-                      {t.apiKeyConfigured}
-                    </span>
-                  </>
-                ) : isCustomApi ? (
-                  <>
-                    <Check className="size-3.5 shrink-0 text-blue-500 sm:size-4" />
-                    <span className="text-blue-600 text-xs sm:text-sm dark:text-blue-400">
-                      {t.apiKeyOptional}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="size-3.5 shrink-0 text-yellow-500 sm:size-4" />
-                    <span className="text-xs text-yellow-600 sm:text-sm dark:text-yellow-400">
-                      {t.apiKeyRequired}
-                    </span>
-                  </>
-                )}
-              </div>
+              {/* RAG login hint */}
+              {isRag && !getStoredRagToken() && (
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2.5 dark:border-yellow-900 dark:bg-yellow-950 sm:p-3">
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 sm:text-sm">
+                    {t.ragLoginRequired}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -715,14 +448,16 @@ export function useApiKey() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as Partial<ApiKeySettings>;
-        const provider = (parsed.provider ??
-          defaultSettings.provider) as ProviderId;
+        let provider = (parsed.provider ?? defaultSettings.provider) as ProviderId;
+        if (provider !== "doubao" && provider !== "rag") {
+          provider = "doubao";
+        }
         const prov = getProvider(provider);
         return {
           provider,
           apiKey: parsed.apiKey ?? "",
-          baseURL: parsed.baseURL ?? prov.baseURL,
-          model: parsed.model ?? prov.defaultModel,
+          baseURL: prov.baseURL,
+          model: prov.defaultModel,
           knowledgeBaseId: parsed.knowledgeBaseId,
           localDownloadPath: parsed.localDownloadPath ?? "",
         };

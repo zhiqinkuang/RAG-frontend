@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n";
 import { ragRegister, setStoredRagAuth, ragLogin } from "@/lib/rag-auth";
-import { getProvider } from "@/lib/providers";
+
 import {
   validateEmail,
   validatePassword,
@@ -18,6 +18,17 @@ import {
 import { getRagBackendUrl } from "@/lib/config";
 
 const STORAGE_KEY = "chat-settings";
+
+function getSafeRedirectFromUrl(): string {
+  if (typeof window === "undefined") return "/";
+  try {
+    const r = new URLSearchParams(window.location.search).get("redirect");
+    if (!r || !r.startsWith("/") || r.startsWith("//")) return "/";
+    return r;
+  } catch {
+    return "/";
+  }
+}
 
 /** 密码强度指示器组件 */
 function PasswordStrengthIndicator({
@@ -158,15 +169,14 @@ export default function RegisterPage() {
         email.trim().toLowerCase(),
         password,
       );
-      setStoredRagAuth(res.token, res.user);
+      setStoredRagAuth(res.token, res.user, res.expire);
       const settings = {
         provider: "rag",
         apiKey: res.token,
-        baseURL: ragBackendUrl,
-        model: getProvider("rag").defaultModel,
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-      router.push("/");
+      window.dispatchEvent(new CustomEvent("rag-auth-changed"));
+      router.push(getSafeRedirectFromUrl());
       router.refresh();
     } catch (err) {
       setError(

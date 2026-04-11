@@ -1,18 +1,5 @@
 import { NextResponse } from "next/server";
-
-/** 获取 RAG 后端 URL（优先服务端环境变量） */
-function getRagBackendUrl(clientBaseURL?: string): string {
-  // 优先使用服务端环境变量（生产部署）
-  if (process.env.RAG_API_URL) {
-    return process.env.RAG_API_URL.replace(/\/$/, "");
-  }
-  // 其次使用客户端传入的 baseURL（本地开发）
-  if (clientBaseURL) {
-    return clientBaseURL.replace(/\/$/, "");
-  }
-  // 默认本地开发地址
-  return "http://127.0.0.1:8080";
-}
+import { getRagBackendUrl } from "@/lib/config";
 
 /** 代理到 RAG 后端 POST /api/v1/auth/refresh，请求头带 Authorization */
 export async function POST(req: Request) {

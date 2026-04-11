@@ -1,3 +1,4 @@
+import { getRagBackendUrl, resolveRagInferenceModel } from "@/lib/config";
 import { getProvider, type ProviderId } from "@/lib/providers";
 
 function parseSuggestions(text: string): string[] {
@@ -60,11 +61,20 @@ export async function POST(req: Request) {
     const provider = (providerId ?? "doubao") as ProviderId;
     const prov = getProvider(provider);
     const effectiveApiKey =
-      apiKey ?? process.env.ARK_API_KEY ?? process.env.OPENAI_API_KEY;
+      provider === "rag"
+        ? (apiKey || "")
+        : (process.env.ARK_API_KEY || process.env.OPENAI_API_KEY || "");
     const effectiveBaseURL = requestBaseURL || prov.baseURL;
-    const effectiveModel = model || prov.defaultModel;
+    const effectiveModel =
+      provider === "rag"
+        ? (resolveRagInferenceModel(model) ?? "")
+        : (process.env.DOUBAO_CHAT_MODEL || prov.defaultModel);
 
     if (!effectiveApiKey) {
+      return Response.json({ suggestions: [] });
+    }
+
+    if (provider === "rag" && !effectiveModel) {
       return Response.json({ suggestions: [] });
     }
 
@@ -84,15 +94,14 @@ export async function POST(req: Request) {
     // RAG provider 使用后端的 /v1/chat/completions 接口
     let url: string;
     if (provider === "rag") {
-      url = `${effectiveBaseURL.replace(/\/$/, "")}/v1/chat/completions`;
-    } else if (provider === "custom-api") {
-      url = effectiveBaseURL;
+      const ragBase = effectiveBaseURL || getRagBackendUrl();
+      url = `${ragBase.replace(/\/$/, "")}/v1/chat/completions`;
     } else {
       url = `${effectiveBaseURL.replace(/\/$/, "")}/chat/completions`;
     }
 
     const body: Record<string, unknown> = {
-      model: effectiveModel || "ep-20260303160518-fzrwg",
+      model: effectiveModel,
       messages: [
         { role: "system", content: systemPrompt },
         ...trimmed,
