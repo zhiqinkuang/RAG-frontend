@@ -86,6 +86,50 @@ function readBackendErrorMessage(data: unknown): string | null {
   return null;
 }
 
+/**
+ * RAG 网关多数接口使用 HTTP 200 +信封 { code, message, data? }。
+ * code !== 0 时必须按业务码映射，否则会误报为泛型 400。
+ */
+function mapRegisterEnvelopeError(
+  code: number,
+  message?: string,
+): NextResponse {
+  const msg = (message ?? "").trim();
+  const looksInternal =
+    code >= 30000 ||
+    code >= 50000 ||
+    /mysql|dial tcp|lookup \w+ on|127\.0\.0\.\d{1,3}/i.test(msg);
+  if (looksInternal) {
+    console.error(`[REGISTER] backend internal envelope code=${code}`);
+    return errorResponse(
+      "服务暂时不可用，请稍后重试。若持续出现，请联系管理员检查后端与数据库是否在同一 Docker 网络中并已启动。",
+      503,
+    );
+  }
+  if (code === 20003) {
+    return errorResponse("用户名或邮箱已被注册", 409);
+  }
+  if (code === 10001 || code === 20006) {
+    const safe =
+      msg.length > 0 &&
+      msg.length < 220 &&
+      !/[<>]/.test(msg) &&
+      !/mysql|dial tcp/i.test(msg)
+        ? msg
+        : null;
+    return errorResponse(
+      safe ?? "注册信息不符合要求，请检查用户名、邮箱和密码格式",
+      400,
+    );
+  }
+  const hint =
+    readBackendErrorMessage({ message: msg }) ?? "注册失败，请稍后重试";
+  return errorResponse(
+    hint.length < 220 && !/[<>]/.test(hint) ? hint : "注册失败，请稍后重试",
+    400,
+  );
+}
+
 /** 代理到 RAG 后端 POST /api/v1/auth/register */
 export async function POST(req: NextRequest) {
   // 获取客户端 IP
@@ -188,6 +232,30 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json().catch(() => ({}));
+    const raw = data as {
+      code?: number;
+      message?: string;
+      data?: unknown;
+      [key: string]: unknown;
+    };
+
+    if (typeof raw.code === "number" && raw.code !== 0) {
+      const baseSource = process.env.RAG_API_URL
+        ? "RAG_API_URL"
+        : process.env.NEXT_PUBLIC_RAG_API_URL
+          ? "NEXT_PUBLIC_RAG_API_URL"
+          : "body.baseURL|default";
+      console.log(
+        `[REGISTER] backend envelope code=${raw.code} base=${baseSource} → ${registerUrl}`,
+      );
+      logRequest("REGISTER", {
+        username: sanitizedUsername,
+        email: sanitizedEmail,
+        ip: clientIP,
+        success: false,
+      });
+      return mapRegisterEnvelopeError(raw.code, raw.message);
+    }
 
     if (!res.ok) {
       const backendHint = readBackendErrorMessage(data);
@@ -228,22 +296,6 @@ export async function POST(req: NextRequest) {
         `注册失败（后端返回 ${res.status}），请检查邮箱/用户名是否已存在或联系管理员`,
         400,
       );
-    }
-
-    const raw = data as {
-      code?: number;
-      data?: unknown;
-      [key: string]: unknown;
-    };
-    // 仅当后端显式返回 code 时才校验；缺省 code 时视为成功（兼容仅 HTTP 状态 + 裸 JSON 的 API）
-    if (typeof raw.code === "number" && raw.code !== 0) {
-      logRequest("REGISTER", {
-        username: sanitizedUsername,
-        email: sanitizedEmail,
-        ip: clientIP,
-        success: false,
-      });
-      return errorResponse("注册失败，请稍后重试", 400);
     }
 
     logRequest("REGISTER", {
