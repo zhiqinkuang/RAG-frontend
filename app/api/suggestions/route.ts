@@ -62,13 +62,13 @@ export async function POST(req: Request) {
     const prov = getProvider(provider);
     const effectiveApiKey =
       provider === "rag"
-        ? (apiKey || "")
-        : (process.env.ARK_API_KEY || process.env.OPENAI_API_KEY || "");
+        ? apiKey || ""
+        : process.env.ARK_API_KEY || process.env.OPENAI_API_KEY || "";
     const effectiveBaseURL = requestBaseURL || prov.baseURL;
     const effectiveModel =
       provider === "rag"
         ? (resolveRagInferenceModel(model) ?? "")
-        : (process.env.DOUBAO_CHAT_MODEL || prov.defaultModel);
+        : process.env.DOUBAO_CHAT_MODEL || prov.defaultModel;
 
     if (!effectiveApiKey) {
       return Response.json({ suggestions: [] });

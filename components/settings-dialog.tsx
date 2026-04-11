@@ -96,7 +96,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as Partial<ApiKeySettings>;
-        let provider = (parsed.provider ?? defaultSettings.provider) as ProviderId;
+        let provider = (parsed.provider ??
+          defaultSettings.provider) as ProviderId;
         if (provider !== "doubao" && provider !== "rag") {
           provider = "doubao";
         }
@@ -335,7 +336,7 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
                       <span className="font-medium text-xs sm:text-sm">
                         {p.name}
                       </span>
-                      <span className="text-muted-foreground text-[10px] sm:text-xs">
+                      <span className="text-[10px] text-muted-foreground sm:text-xs">
                         {p.description}
                       </span>
                     </button>
@@ -393,8 +394,8 @@ export function SettingsDialog({ onSaved }: SettingsDialogProps) {
 
               {/* RAG login hint */}
               {isRag && !getStoredRagToken() && (
-                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2.5 dark:border-yellow-900 dark:bg-yellow-950 sm:p-3">
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300 sm:text-sm">
+                <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-2.5 sm:p-3 dark:border-yellow-900 dark:bg-yellow-950">
+                  <p className="text-xs text-yellow-700 sm:text-sm dark:text-yellow-300">
                     {t.ragLoginRequired}
                   </p>
                 </div>
@@ -448,7 +449,8 @@ export function useApiKey() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as Partial<ApiKeySettings>;
-        let provider = (parsed.provider ?? defaultSettings.provider) as ProviderId;
+        let provider = (parsed.provider ??
+          defaultSettings.provider) as ProviderId;
         if (provider !== "doubao" && provider !== "rag") {
           provider = "doubao";
         }

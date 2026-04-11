@@ -87,8 +87,7 @@ const translations = {
     ragApiHint: "Base URL 为 RAG 后端地址；API Key 为登录后获得的 Token。",
     ragModelHint:
       "与 Base URL（如 http://127.0.0.1:8080）无关：这里只填「上游大模型的 model 标识」。请查看 RAG 后端 README/配置说明，或问后端开发者应填什么。",
-    ragModelPlaceholder:
-      "例如 gpt-4o-mini、或后端文档中的 model / 接入点 ID",
+    ragModelPlaceholder: "例如 gpt-4o-mini、或后端文档中的 model / 接入点 ID",
     // Auth (RAG)
     login: "登录",
     register: "注册",
@@ -200,7 +199,8 @@ const translations = {
     chatMode: "Chat Mode",
     doubaoModeActive: "Using Doubao AI chat mode, powered by server",
     ragModeActive: "Using RAG knowledge base Q&A mode",
-    ragLoginRequired: "Please login to your RAG account to use knowledge base Q&A",
+    ragLoginRequired:
+      "Please login to your RAG account to use knowledge base Q&A",
     cancel: "Cancel",
     save: "Save",
     saved: "Saved",

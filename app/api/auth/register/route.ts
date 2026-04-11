@@ -16,10 +16,7 @@ function errorResponse(
   status: number = 400,
   extra?: Record<string, unknown>,
 ) {
-  return NextResponse.json(
-    { error: message, ...(extra ?? {}) },
-    { status },
-  );
+  return NextResponse.json({ error: message, ...(extra ?? {}) }, { status });
 }
 
 /**
@@ -77,7 +74,12 @@ function readBackendErrorMessage(data: unknown): string | null {
   const o = data as Record<string, unknown>;
   for (const key of ["message", "msg", "error", "detail"]) {
     const v = o[key];
-    if (typeof v === "string" && v.length > 0 && v.length < 200 && !/[<>]/.test(v)) {
+    if (
+      typeof v === "string" &&
+      v.length > 0 &&
+      v.length < 200 &&
+      !/[<>]/.test(v)
+    ) {
       return v;
     }
   }

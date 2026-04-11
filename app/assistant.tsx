@@ -91,10 +91,7 @@ class CustomChatTransport extends AssistantChatTransport<UIMessage> {
       if (settings.apiKey) {
         next.apiKey = settings.apiKey;
       }
-      if (
-        settings.knowledgeBaseId != null &&
-        settings.knowledgeBaseId > 0
-      ) {
+      if (settings.knowledgeBaseId != null && settings.knowledgeBaseId > 0) {
         next.knowledgeBaseId = settings.knowledgeBaseId;
         const selectedDocIds = this.getSelectedDocIds();
         if (selectedDocIds.length > 0) {

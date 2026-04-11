@@ -87,7 +87,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     setAllowed(true);
     setChecking(false);
-  }, [pathname, isPublic, redirectToLogin]);
+  }, [isPublic, redirectToLogin]);
 
   // 监听 token 过期事件
   useEffect(() => {

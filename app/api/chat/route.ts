@@ -502,13 +502,13 @@ export async function POST(req: Request) {
     const prov = getProvider(provider);
     const effectiveApiKey =
       provider === "rag"
-        ? (apiKey || "")
-        : (process.env.ARK_API_KEY || process.env.OPENAI_API_KEY || "");
+        ? apiKey || ""
+        : process.env.ARK_API_KEY || process.env.OPENAI_API_KEY || "";
     const effectiveBaseURL = requestBaseURL || prov.baseURL;
     const effectiveModel =
       provider === "rag"
         ? (resolveRagInferenceModel(model) ?? "")
-        : (process.env.DOUBAO_CHAT_MODEL || prov.defaultModel);
+        : process.env.DOUBAO_CHAT_MODEL || prov.defaultModel;
 
     if (MOCK_CHAT) {
       const lastUser = [...messages].reverse().find((m) => m.role === "user") as
@@ -546,10 +546,7 @@ export async function POST(req: Request) {
 
     // RAG 知识库：调用后端 POST /api/chat（UI Message Stream 格式）
     if (provider === "rag") {
-      const base = (effectiveBaseURL || getRagBackendUrl()).replace(
-        /\/$/,
-        "",
-      );
+      const base = (effectiveBaseURL || getRagBackendUrl()).replace(/\/$/, "");
       if (!base) {
         return jsonErrorResponse("请填写 RAG 后端地址 (Base URL)", 400);
       }
